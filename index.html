@@ -21,7 +21,7 @@
                 width = containerWidth - margin.left - margin.right,
                 height = containerHeight - margin.top - margin.bottom;
             var colors = ["#b33040", "#d25c4d", "#f2b447", "#d9d574"];
-            const days = [0, 1, 2, 3, 4, 5, 6];// will change to ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             const hours = [];
             for (let i = 0; i < 24; i++) {
                 hours.push(i.toString());
@@ -32,7 +32,24 @@
             }
 
             var dataCopy;
+            var currData = {
+                hours: [],
+                days: [],
+                months: []
+            };
+            var currEmojis = ["\ud83c\udf57"];              // list of emojis currently displayed
+            for (let i = 0; i < hours.length; i++) {
+                currData.hours.push({hour: hours[i]});
+            }
+            for (let i = 0; i < days.length; i++) {
+                currData.days.push({day: days[i]});
+            }
+            for (let i = 0; i < months.length; i++) {
+                currData.months.push({month: months[i]});
+            }
+            console.log(currData);
             var dataReady = false;
+            var currTimeUnit = "month";
 
             
             const svg = d3.select("#timeChart")
@@ -40,14 +57,48 @@
                 .attr("width", containerWidth)
                 .attr("height", containerHeight);
 
-            d3.json('coffee_beer_data.json', function(error, data) {
+            d3.json('time_vis_data.json', function(error, data) {
                 dataCopy = data;
                 dataReady = true;
-                let timeUnit = "month";
-                createBarChart(data[timeUnit+"s"], timeUnit);
+                processData("\ud83c\udf57");
+                createBarChart();
             });
 
-            function createBarChart(data, timeUnit) {
+            function processData(emoji) {
+                currData = {
+                    hours: [],
+                    days: [],
+                    months: []
+                };
+                currEmojis = [emoji];              // list of emojis currently displayed
+                for (let i = 0; i < hours.length; i++) {
+                    currData.hours.push({hour: hours[i]});
+                }
+                for (let i = 0; i < days.length; i++) {
+                    currData.days.push({day: days[i]});
+                }
+                for (let i = 0; i < months.length; i++) {
+                    currData.months.push({month: months[i]});
+                }
+                let emojiData = dataCopy[emoji];
+                console.log(emojiData);
+                for (let i = 0; i < hours.length; i++) {
+                    currData.hours[i][emoji] = emojiData.hours[i].frequency;
+                }
+                for (let i = 0; i < days.length; i++) {
+                    currData.days[i][emoji] = emojiData.days[i].frequency;
+                }
+                for (let i = 0; i < months.length; i++) {
+                    currData.months[i][emoji] = emojiData.months[i].frequency;
+                }
+                console.log("currData:");
+                console.log(currData);
+                createBarChart();
+            }
+
+            function createBarChart() {
+                let data = currData[currTimeUnit+"s"];
+                console.log(data);
                 /*.style("margin-left", 100)*/;
                 /*svg.append("text")
                     .attr("id", "coffeeDayTitle")
@@ -67,13 +118,14 @@
                 // calculates the offset in y for each stacked bar
                 svg.selectAll("*").remove();
 
-                var dataset = d3.stack().keys(["coffee", "beer"])(data);
+                var dataset = d3.stack().keys(currEmojis)(data);
+                console.log("dataset:");
                 console.log(dataset);
 
                 var xDomain;
-                if (timeUnit === "hour")
+                if (currTimeUnit === "hour")
                     xDomain = hours;
-                else if (timeUnit === "day")
+                else if (currTimeUnit === "day")
                     xDomain = days;
                 else
                     xDomain = months;
@@ -114,7 +166,7 @@
                     .data(function(d) { return d; })
                     .enter()
                     .append('rect')
-                    .attr("x", (d, i) => x(d.data[timeUnit]))
+                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
                     .attr("y", (d, i) => y(d[1]))
                     .attr("width", x.bandwidth())
                     .attr("height", (d, i) => y(d[0]) - y(d[1]));
@@ -145,18 +197,33 @@
             }
 
             function hourChart() {
-                if (dataReady)
-                    createBarChart(dataCopy["hours"], "hour");
+                if (dataReady) {
+                    currTimeUnit = "hour";
+                    createBarChart();
+                }
             }
             function dayChart() {
-                if (dataReady)
-                    createBarChart(dataCopy["days"], "day");
+                if (dataReady) {
+                    currTimeUnit = "day";
+                    createBarChart();
+                }
             }
             function monthChart() {
-                if (dataReady)
-                    createBarChart(dataCopy["months"], "month");
+                if (dataReady){
+                    currTimeUnit = "month";
+                    createBarChart();
+                }
+            }
+
+            function changeEmoji() {
+                let newEmoji = document.getElementById('emojiInput').elements[0].value;
+                processData(newEmoji);
             }
         </script>
+        <form id="emojiInput">
+            Emoji: <input type="text" name="emoji" value="😍"><br>
+        </form>
+        <button onclick="changeEmoji()">Change Emoji</button>
     </body>
 </html>
 
