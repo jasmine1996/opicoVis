@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>D3 Bar Chart</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <script src="http://d3js.org/d3.v4.min.js"></script>
+        <style>
+        </style>
+    </head>
+    <body>
+        <button onclick="hourChart()">Hours</button>
+        <button onclick="dayChart()">Days</button>
+        <button onclick="monthChart()">Months</button>
+
+        <div id="timeChart"></div>
+        <script>
+            var containerWidth = window.innerWidth * 0.6,
+                containerHeight = 600;
+            var margin = {top: 50, right: 30, bottom: 20, left: 30},
+                width = containerWidth - margin.left - margin.right,
+                height = containerHeight - margin.top - margin.bottom;
+            var colors = ["#b33040", "#d25c4d", "#f2b447", "#d9d574"];
+            const days = [0, 1, 2, 3, 4, 5, 6];// will change to ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const hours = [];
+            for (let i = 0; i < 24; i++) {
+                hours.push(i.toString());
+            }
+            const months = [];
+            for (let i = 1; i <= 12; i++) {
+                months.push(i.toString());
+            }
+
+            var dataCopy;
+            var dataReady = false;
+
+            
+            const svg = d3.select("#timeChart")
+                .append("svg")
+                .attr("width", containerWidth)
+                .attr("height", containerHeight);
+
+            d3.json('coffee_beer_data.json', function(error, data) {
+                dataCopy = data;
+                dataReady = true;
+                let timeUnit = "month";
+                createBarChart(data[timeUnit+"s"], timeUnit);
+            });
+
+            function createBarChart(data, timeUnit) {
+                /*.style("margin-left", 100)*/;
+                /*svg.append("text")
+                    .attr("id", "coffeeDayTitle")
+                    .attr("class", "barTitle")
+                    .attr("x", w/2-50)
+                    .attr("y", 40)
+                    .text("When do Opico users get ☕?")
+                    .attr("text-anchor", "end");
+                svg.append("text")
+                    .attr("id", "beerDayTitle")
+                    .attr("class", "barTitle")
+                    .attr("x", w/2+50)
+                    .attr("y", 40)
+                    .text("When do Opico users get 🍺🍻?")
+                    .attr("text-anchor", "start");*/
+
+                // calculates the offset in y for each stacked bar
+                svg.selectAll("*").remove();
+
+                var dataset = d3.stack().keys(["coffee", "beer"])(data);
+                console.log(dataset);
+
+                var xDomain;
+                if (timeUnit === "hour")
+                    xDomain = hours;
+                else if (timeUnit === "day")
+                    xDomain = days;
+                else
+                    xDomain = months;
+
+                var x = d3.scaleBand()
+                    .domain(xDomain)
+                    .rangeRound([margin.left, width])
+                    .padding(0.1)
+                    .align(0.1);
+
+                var y = d3.scaleLinear()
+                    .domain([0, getMax()])
+                    .range([height, margin.top]);
+
+                // x-axis
+                svg.append("g")
+                    .attr("transform", "translate(0," + (height) + ")")
+                    .call(d3.axisBottom(x));
+
+                // y-axis
+                svg.append("g")
+                    .attr("transform", "translate(" + margin.left + ", 0)")
+                    .call(d3.axisLeft(y));
+
+                function getMax() {
+                    let max = d3.max(dataset, function(d) {  let max = d3.max(d, function(d) { return d[1]; }); return max; });
+                    console.log(max);
+                    return max;
+                }
+                // group for drinks
+                svg.selectAll("g.day")
+                    .data(dataset)
+                    .enter()
+                    .append("g")
+                    .attr("class", "day")
+                    .attr("fill", function(d, i) { return colors[i]; })
+                    .selectAll("rect")
+                    .data(function(d) { return d; })
+                    .enter()
+                    .append('rect')
+                    .attr("x", (d, i) => x(d.data[timeUnit]))
+                    .attr("y", (d, i) => y(d[1]))
+                    .attr("width", x.bandwidth())
+                    .attr("height", (d, i) => y(d[0]) - y(d[1]));
+
+                /*svg.selectAll("rect.beerDay")
+                    .data(data.beerDays)
+                    .enter()
+                    .append("rect")
+                    .attr("class", "beerDay")
+                    .attr("x", (d, i) => w/2 + 50)
+                    .attr("y", (d, i) => 60 + i * 40)
+                    .attr("width", (d, i) => d.frequency * 5)
+                    .attr("height", 35)
+                    .attr("fill", function(d) {
+                        return "hsl(45, 85%, " + (100 - d.frequency).toString() + "%)";
+                    });*/
+                    
+                /* old way to label day of week
+                svg.selectAll("text.day")
+                    .data(dayOfWeek)
+                    .enter()
+                    .append("text")
+                    .attr("class", "day")
+                    .attr("x", (d, i) => x(i) + x.bandwidth()/2)
+                    .attr("y", (d, i) => height - 5)
+                    .attr("text-anchor", "middle")
+                    .text((d) => d);*/
+            }
+
+            function hourChart() {
+                if (dataReady)
+                    createBarChart(dataCopy["hours"], "hour");
+            }
+            function dayChart() {
+                if (dataReady)
+                    createBarChart(dataCopy["days"], "day");
+            }
+            function monthChart() {
+                if (dataReady)
+                    createBarChart(dataCopy["months"], "month");
+            }
+        </script>
+    </body>
+</html>
+

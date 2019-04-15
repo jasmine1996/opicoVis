@@ -1,0 +1,223 @@
+{
+    "hours": [
+        {
+            "hour": 0,
+            "coffee": 9,
+            "beer": 25
+        },
+        {
+            "hour": 1,
+            "coffee": 5,
+            "beer": 7
+        },
+        {
+            "hour": 2,
+            "coffee": 1,
+            "beer": 6
+        },
+        {
+            "hour": 3,
+            "coffee": 1,
+            "beer": 4
+        },
+        {
+            "hour": 4,
+            "coffee": 2,
+            "beer": 2
+        },
+        {
+            "hour": 5,
+            "coffee": 0,
+            "beer": 0
+        },
+        {
+            "hour": 6,
+            "coffee": 5,
+            "beer": 0
+        },
+        {
+            "hour": 7,
+            "coffee": 3,
+            "beer": 3
+        },
+        {
+            "hour": 8,
+            "coffee": 30,
+            "beer": 3
+        },
+        {
+            "hour": 9,
+            "coffee": 22,
+            "beer": 6
+        },
+        {
+            "hour": 10,
+            "coffee": 33,
+            "beer": 4
+        },
+        {
+            "hour": 11,
+            "coffee": 35,
+            "beer": 12
+        },
+        {
+            "hour": 12,
+            "coffee": 23,
+            "beer": 16
+        },
+        {
+            "hour": 13,
+            "coffee": 48,
+            "beer": 14
+        },
+        {
+            "hour": 14,
+            "coffee": 46,
+            "beer": 18
+        },
+        {
+            "hour": 15,
+            "coffee": 33,
+            "beer": 17
+        },
+        {
+            "hour": 16,
+            "coffee": 23,
+            "beer": 18
+        },
+        {
+            "hour": 17,
+            "coffee": 26,
+            "beer": 17
+        },
+        {
+            "hour": 18,
+            "coffee": 10,
+            "beer": 26
+        },
+        {
+            "hour": 19,
+            "coffee": 12,
+            "beer": 38
+        },
+        {
+            "hour": 20,
+            "coffee": 11,
+            "beer": 20
+        },
+        {
+            "hour": 21,
+            "coffee": 18,
+            "beer": 31
+        },
+        {
+            "hour": 22,
+            "coffee": 15,
+            "beer": 27
+        },
+        {
+            "hour": 23,
+            "coffee": 5,
+            "beer": 39
+        }
+    ],
+    "days": [
+        {
+            "day": 0,
+            "coffee": 52,
+            "beer": 61
+        },
+        {
+            "day": 1,
+            "coffee": 63,
+            "beer": 32
+        },
+        {
+            "day": 2,
+            "coffee": 57,
+            "beer": 45
+        },
+        {
+            "day": 3,
+            "coffee": 46,
+            "beer": 58
+        },
+        {
+            "day": 4,
+            "coffee": 60,
+            "beer": 50
+        },
+        {
+            "day": 5,
+            "coffee": 58,
+            "beer": 55
+        },
+        {
+            "day": 6,
+            "coffee": 80,
+            "beer": 52
+        }
+    ],
+    "months": [
+        {
+            "month": 1,
+            "coffee": 22,
+            "beer": 21
+        },
+        {
+            "month": 2,
+            "coffee": 31,
+            "beer": 25
+        },
+        {
+            "month": 3,
+            "coffee": 59,
+            "beer": 56
+        },
+        {
+            "month": 4,
+            "coffee": 42,
+            "beer": 26
+        },
+        {
+            "month": 5,
+            "coffee": 32,
+            "beer": 36
+        },
+        {
+            "month": 6,
+            "coffee": 17,
+            "beer": 16
+        },
+        {
+            "month": 7,
+            "coffee": 26,
+            "beer": 32
+        },
+        {
+            "month": 8,
+            "coffee": 27,
+            "beer": 21
+        },
+        {
+            "month": 9,
+            "coffee": 30,
+            "beer": 14
+        },
+        {
+            "month": 10,
+            "coffee": 24,
+            "beer": 20
+        },
+        {
+            "month": 11,
+            "coffee": 57,
+            "beer": 28
+        },
+        {
+            "month": 12,
+            "coffee": 49,
+            "beer": 58
+        }
+    ]
+}
