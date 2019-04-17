@@ -37,7 +37,7 @@
                 days: [],
                 months: []
             };
-            var currEmojis = ["\ud83c\udf57"];              // list of emojis currently displayed
+            var currEmojis = [];              // list of emojis currently displayed
             for (let i = 0; i < hours.length; i++) {
                 currData.hours.push({hour: hours[i]});
             }
@@ -60,8 +60,6 @@
             d3.json('time_vis_data.json', function(error, data) {
                 dataCopy = data;
                 dataReady = true;
-                processData("\ud83c\udf57");
-                createBarChart();
             });
 
             function processData(emoji) {
@@ -80,6 +78,24 @@
                 for (let i = 0; i < months.length; i++) {
                     currData.months.push({month: months[i]});
                 }
+                let emojiData = dataCopy[emoji];
+                console.log(emojiData);
+                for (let i = 0; i < hours.length; i++) {
+                    currData.hours[i][emoji] = emojiData.hours[i].frequency;
+                }
+                for (let i = 0; i < days.length; i++) {
+                    currData.days[i][emoji] = emojiData.days[i].frequency;
+                }
+                for (let i = 0; i < months.length; i++) {
+                    currData.months[i][emoji] = emojiData.months[i].frequency;
+                }
+                console.log("currData:");
+                console.log(currData);
+                createBarChart();
+            }
+
+            function addEmojiToDisplay(emoji) {
+                currEmojis.push(emoji);              // list of emojis currently displayed
                 let emojiData = dataCopy[emoji];
                 console.log(emojiData);
                 for (let i = 0; i < hours.length; i++) {
@@ -115,9 +131,9 @@
                     .text("When do Opico users get 🍺🍻?")
                     .attr("text-anchor", "start");*/
 
-                // calculates the offset in y for each stacked bar
                 svg.selectAll("*").remove();
 
+                // calculates the offset in y for each stacked bar
                 var dataset = d3.stack().keys(currEmojis)(data);
                 console.log("dataset:");
                 console.log(dataset);
@@ -217,13 +233,16 @@
 
             function changeEmoji() {
                 let newEmoji = document.getElementById('emojiInput').elements[0].value;
-                processData(newEmoji);
+                document.getElementById('emojiList').innerHTML += " " + newEmoji;
+                addEmojiToDisplay(newEmoji);
+                document.getElementById('emojiInput').elements[0].value = "";
             }
         </script>
         <form id="emojiInput">
             Emoji: <input type="text" name="emoji" value="😍"><br>
         </form>
-        <button onclick="changeEmoji()">Change Emoji</button>
+        <button onclick="changeEmoji()">Add Emoji</button>
+        <div>Current Emojis:<span id="emojiList"></span></div>
     </body>
 </html>
 
