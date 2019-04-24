@@ -5,22 +5,112 @@
         <title>D3 Bar Chart</title>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
         <script src="http://d3js.org/d3.v4.min.js"></script>
+        <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
         <style>
+            body {
+                font-family: 'Lato', sans-serif;
+            }
+            #timeChart {
+                float: left;
+            }
+            .sidebar {
+                float: right;
+                width: 35%;
+                height: 80vh;
+                padding: 20px;
+            }
+            #timeUnitContainer {
+                margin-bottom: 30px;
+            }
+            button {
+                cursor: pointer;
+                font-family: 'Lato', sans-serif;
+                background: none;
+                border: 0.1em solid #8b4eb7;
+                color: #8b4eb7;
+                font-size: 16px;
+                border-radius: 5px;
+            }
+            .timeUnitButton {
+                height: 40px;
+                width: 80px;
+                margin-right: 10px;
+            }
+            .selectedButton {
+                color: white;
+                background: #8b4eb7;
+            }
+            #enterEmojiBox {    
+                height: 30px;
+                width: 28px;
+                float: left;
+                border: 0.1rem solid #8b4eb7;
+                border-radius: 5px 0px 0px 5px;
+                font-size: 20px;
+                padding: 0px 5px 2px 5px;
+                margin-right: 10px;
+            }
+            #addEmojiButton {
+                height: 35.5px;
+                border-radius: 0px 5px 5px 0px;
+                transform: translateX(-11px);
+                background: #b892d3;
+                color: white;
+            }
+            #currentEmojiList {
+                list-style-type:square
+            }
+            .emojiItem {
+                font-size: 20px;
+            }
+            .emojiDeleteButton {
+                border: none;
+                font-size: 12px;
+                transform: translateY(-2px);
+                margin-left: 10px;
+            }
         </style>
     </head>
     <body>
-        <button onclick="hourChart()">Hours</button>
-        <button onclick="dayChart()">Days</button>
-        <button onclick="monthChart()">Months</button>
-
         <div id="timeChart"></div>
+        <div class="sidebar">
+            <h3>Select Time Unit</h3>
+            <div id="timeUnitContainer">
+                <button id="hourViewButton" class="timeUnitButton">Hours</button>
+                <button id="dayViewButton" class="timeUnitButton">Days</button>
+                <button id="monthViewButton" class="timeUnitButton selectedButton">Months</button>
+            </div>
+            <h3>Select Graph Type</h3>
+            <div>
+                <button>Stacked</button>
+                <button>Grouped</button>
+            </div>
+            <h3>Add Emojis</h3>
+            <div class="emojiInputContainer">
+                <form id="emojiInput">
+                    <input id="enterEmojiBox" type="text" name="emoji" value="">
+                </form>
+                <button id="addEmojiButton" onclick="addEmoji()">➕</button>
+            </div>
+            <h3>Currently Showing</h3>
+            <ul id="currentEmojiList">
+            </ul>
+        </div>
         <script>
             var containerWidth = window.innerWidth * 0.6,
                 containerHeight = 600;
             var margin = {top: 50, right: 30, bottom: 20, left: 30},
                 width = containerWidth - margin.left - margin.right,
                 height = containerHeight - margin.top - margin.bottom;
-            var colors = ["#b33040", "#d25c4d", "#f2b447", "#d9d574"];
+            var svg;
+            var xScale = d3.scaleBand();
+            var yScale = d3.scaleLinear();
+
+            var colors = ["#8A2F30", "#AE3D65", "#BF45A0", "#A64ECE", "#575EDA", "#61DAE4", "#6DEC84", "#C3F379", "#FBD75E", "#FD9762", "#FF6868"];
+            var currColorIndex = 0;
+            var emojiColors = {};
+            var dataCopy;
+            var dataReady = false;
             const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             const hours = [];
             for (let i = 0; i < 24; i++) {
@@ -30,14 +120,11 @@
             for (let i = 1; i <= 12; i++) {
                 months.push(i.toString());
             }
-
-            var dataCopy;
             var currData = {
                 hours: [],
                 days: [],
                 months: []
             };
-            var currEmojis = [];              // list of emojis currently displayed
             for (let i = 0; i < hours.length; i++) {
                 currData.hours.push({hour: hours[i]});
             }
@@ -47,137 +134,66 @@
             for (let i = 0; i < months.length; i++) {
                 currData.months.push({month: months[i]});
             }
-            console.log(currData);
-            var dataReady = false;
-            var currTimeUnit = "month";
-
+            var currEmojis = [];              // list of emojis currently displayed
             
-            const svg = d3.select("#timeChart")
-                .append("svg")
-                .attr("width", containerWidth)
-                .attr("height", containerHeight);
+            var currTimeUnit = "month";
+            var xDomain = eval(currTimeUnit+"s");
 
             d3.json('time_vis_data.json', function(error, data) {
                 dataCopy = data;
                 dataReady = true;
-            });
 
-            function processData(emoji) {
-                currData = {
-                    hours: [],
-                    days: [],
-                    months: []
-                };
-                currEmojis = [emoji];              // list of emojis currently displayed
-                for (let i = 0; i < hours.length; i++) {
-                    currData.hours.push({hour: hours[i]});
-                }
-                for (let i = 0; i < days.length; i++) {
-                    currData.days.push({day: days[i]});
-                }
-                for (let i = 0; i < months.length; i++) {
-                    currData.months.push({month: months[i]});
-                }
-                let emojiData = dataCopy[emoji];
-                console.log(emojiData);
-                for (let i = 0; i < hours.length; i++) {
-                    currData.hours[i][emoji] = emojiData.hours[i].frequency;
-                }
-                for (let i = 0; i < days.length; i++) {
-                    currData.days[i][emoji] = emojiData.days[i].frequency;
-                }
-                for (let i = 0; i < months.length; i++) {
-                    currData.months[i][emoji] = emojiData.months[i].frequency;
-                }
-                console.log("currData:");
-                console.log(currData);
-                createBarChart();
-            }
+                addEmojiToDisplay('\ud83c\udf57');
+                let newEmoji = '\ud83c\udf57';
+                let li = document.createElement("LI");
+                li.innerHTML = newEmoji;
+                li.setAttribute("id", newEmoji+"Item");
+                li.setAttribute("class", "emojiItem");
+                li.style.color = emojiColors[newEmoji];
+                let button = document.createElement("BUTTON");
+                button.innerHTML = "✖️";
+                button.setAttribute("class", "emojiDeleteButton");
+                button.addEventListener('click', function() {
+                    removeEmoji(newEmoji);
+                });
+                li.append(button);
+                document.getElementById('currentEmojiList').prepend(li);
 
-            function addEmojiToDisplay(emoji) {
-                currEmojis.push(emoji);              // list of emojis currently displayed
-                let emojiData = dataCopy[emoji];
-                console.log(emojiData);
-                for (let i = 0; i < hours.length; i++) {
-                    currData.hours[i][emoji] = emojiData.hours[i].frequency;
-                }
-                for (let i = 0; i < days.length; i++) {
-                    currData.days[i][emoji] = emojiData.days[i].frequency;
-                }
-                for (let i = 0; i < months.length; i++) {
-                    currData.months[i][emoji] = emojiData.months[i].frequency;
-                }
-                console.log("currData:");
-                console.log(currData);
-                createBarChart();
-            }
-
-            function createBarChart() {
-                let data = currData[currTimeUnit+"s"];
-                console.log(data);
-                /*.style("margin-left", 100)*/;
-                /*svg.append("text")
-                    .attr("id", "coffeeDayTitle")
-                    .attr("class", "barTitle")
-                    .attr("x", w/2-50)
-                    .attr("y", 40)
-                    .text("When do Opico users get ☕?")
-                    .attr("text-anchor", "end");
-                svg.append("text")
-                    .attr("id", "beerDayTitle")
-                    .attr("class", "barTitle")
-                    .attr("x", w/2+50)
-                    .attr("y", 40)
-                    .text("When do Opico users get 🍺🍻?")
-                    .attr("text-anchor", "start");*/
-
-                svg.selectAll("*").remove();
+                svg = d3.select("#timeChart")
+                    .append("svg")
+                    .attr("width", containerWidth)
+                    .attr("height", containerHeight);
 
                 // calculates the offset in y for each stacked bar
-                var dataset = d3.stack().keys(currEmojis)(data);
-                console.log("dataset:");
-                console.log(dataset);
+                var dataset = d3.stack().keys(currEmojis)(currData[currTimeUnit+"s"]);
 
-                var xDomain;
-                if (currTimeUnit === "hour")
-                    xDomain = hours;
-                else if (currTimeUnit === "day")
-                    xDomain = days;
-                else
-                    xDomain = months;
-
-                var x = d3.scaleBand()
-                    .domain(xDomain)
+                var x = xScale.domain(xDomain)
                     .rangeRound([margin.left, width])
                     .padding(0.1)
                     .align(0.1);
 
-                var y = d3.scaleLinear()
-                    .domain([0, getMax()])
+                var y = yScale.domain([0, d3.max(dataset, function(d) {  let max = d3.max(d, function(d) { return d[1]; }); return max; })])
                     .range([height, margin.top]);
 
                 // x-axis
                 svg.append("g")
+                    .attr("class", "x axis")
                     .attr("transform", "translate(0," + (height) + ")")
                     .call(d3.axisBottom(x));
 
                 // y-axis
                 svg.append("g")
+                    .attr("class", "y axis")
                     .attr("transform", "translate(" + margin.left + ", 0)")
                     .call(d3.axisLeft(y));
 
-                function getMax() {
-                    let max = d3.max(dataset, function(d) {  let max = d3.max(d, function(d) { return d[1]; }); return max; });
-                    console.log(max);
-                    return max;
-                }
                 // group for drinks
-                svg.selectAll("g.day")
+                svg.selectAll("g.stack")
                     .data(dataset)
                     .enter()
                     .append("g")
-                    .attr("class", "day")
-                    .attr("fill", function(d, i) { return colors[i]; })
+                    .attr("class", "stack")
+                    .attr("fill", function(d, i) { return emojiColors[d.key]; })
                     .selectAll("rect")
                     .data(function(d) { return d; })
                     .enter()
@@ -186,63 +202,172 @@
                     .attr("y", (d, i) => y(d[1]))
                     .attr("width", x.bandwidth())
                     .attr("height", (d, i) => y(d[0]) - y(d[1]));
+            });
 
-                /*svg.selectAll("rect.beerDay")
-                    .data(data.beerDays)
-                    .enter()
-                    .append("rect")
-                    .attr("class", "beerDay")
-                    .attr("x", (d, i) => w/2 + 50)
-                    .attr("y", (d, i) => 60 + i * 40)
-                    .attr("width", (d, i) => d.frequency * 5)
-                    .attr("height", 35)
-                    .attr("fill", function(d) {
-                        return "hsl(45, 85%, " + (100 - d.frequency).toString() + "%)";
-                    });*/
-                    
-                /* old way to label day of week
-                svg.selectAll("text.day")
-                    .data(dayOfWeek)
-                    .enter()
-                    .append("text")
-                    .attr("class", "day")
-                    .attr("x", (d, i) => x(i) + x.bandwidth()/2)
-                    .attr("y", (d, i) => height - 5)
-                    .attr("text-anchor", "middle")
-                    .text((d) => d);*/
+            function addEmojiToDisplay(emoji) {
+                currEmojis.push(emoji);              // list of emojis currently displayed
+                let emojiData = dataCopy[emoji];
+                for (let i = 0; i < hours.length; i++) {
+                    currData.hours[i][emoji] = emojiData.hours[i].frequency;
+                }
+                for (let i = 0; i < days.length; i++) {
+                    currData.days[i][emoji] = emojiData.days[i].frequency;
+                }
+                for (let i = 0; i < months.length; i++) {
+                    currData.months[i][emoji] = emojiData.months[i].frequency;
+                }
+                emojiColors[emoji] = colors[currColorIndex];
+                currColorIndex = (currColorIndex + 1) % colors.length;
             }
 
-            function hourChart() {
-                if (dataReady) {
+            function removeEmojiToDisplay(emoji) {
+                let index = currEmojis.indexOf(emoji);              // list of emojis currently displayed
+                currEmojis.splice(index, 1);
+                for (let i = 0; i < hours.length; i++) {
+                    delete currData.hours[i][emoji];
+                }
+                for (let i = 0; i < days.length; i++) {
+                    delete currData.days[i][emoji];
+                }
+                for (let i = 0; i < months.length; i++) {
+                    delete currData.months[i][emoji];
+                }
+                delete emojiColors[emoji];
+            }
+
+            function updateChart() {
+                var dataset = d3.stack().keys(currEmojis)(currData[currTimeUnit+"s"]);
+
+                // animate changes in axies
+                var x = xScale.domain(xDomain)
+                    .rangeRound([margin.left, width])
+                    .padding(0.1)
+                    .align(0.1);
+                var y = yScale.domain([0, d3.max(dataset, function(d) {  let max = d3.max(d, function(d) { return d[1]; }); return max; })])
+                    .range([height, margin.top]);
+
+                var t = d3.transition()
+                    .duration(500)
+                svg.select(".x")
+                    .transition(t)
+                    .call(d3.axisBottom(x));
+                svg.select(".y")
+                    .transition(t)
+                    .call(d3.axisLeft(y));
+
+                // update bars
+                var stacks = svg.selectAll("g.stack")
+                    .data(dataset);
+                // remove removed emoji bars
+                stacks.exit().remove();
+                // recolor bars that are not removed
+                stacks.attr("fill", function(d, i) { return emojiColors[d.key]; });
+                // add new emoji bars
+                stacks.enter()
+                    .append("g")
+                    .attr("class", "stack")
+                    .attr("fill", function(d, i) { return emojiColors[d.key]; })
+                    .selectAll("rect")
+                    .data(function(d) { return d; })
+                    .enter()
+                    .append('rect')
+                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
+                    .attr("y", (d, i) => y(d[1]))
+                    .attr("width", x.bandwidth())
+                    .attr("height", 0);
+                
+                var emojiBars = svg.selectAll("g.stack").selectAll("rect")
+                    .data(function(d) { return d; });
+                emojiBars.exit().remove();
+                emojiBars.enter()
+                    .append('rect')
+                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
+                    .attr("y", height)
+                    .attr("width", x.bandwidth())
+                    .attr("height", 0);
+                svg.selectAll("g.stack").selectAll("rect")
+                    .transition(t)
+                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
+                    .attr("y", (d, i) => y(d[1]))
+                    .attr("width", x.bandwidth())
+                    .attr("height", (d, i) => y(d[0]) - y(d[1]));
+
+                /*svg.selectAll("g.stack")
+                    .data(dataset)
+                    .enter()
+                    .append("g")
+                    .attr("class", "stack")
+                    .attr("fill", function(d, i) { return colors[i]; })
+                    .selectAll("rect")
+                    .data(function(d) { return d; })
+                    .enter()
+                    .append('rect')
+                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
+                    .attr("y", (d, i) => y(d[1]))
+                    .attr("width", x.bandwidth())
+                    .attr("height", (d, i) => y(d[0]) - y(d[1]));*/
+            }
+
+            let viewButtons = document.getElementsByClassName("timeUnitButton");
+            for (let i = 0; i < viewButtons.length; i++) {
+                viewButtons[i].addEventListener('click', function() {
+                    switchView(i);
+                })
+            }
+
+            function switchView(code) {
+                if (!dataReady) return;
+                if (code == 0 && currTimeUnit !== "hour") {    // hour
                     currTimeUnit = "hour";
-                    createBarChart();
                 }
-            }
-            function dayChart() {
-                if (dataReady) {
+                else if (code == 1 && currTimeUnit !== "day") {    // day
                     currTimeUnit = "day";
-                    createBarChart();
                 }
-            }
-            function monthChart() {
-                if (dataReady){
+                else if (code == 2 && currTimeUnit !== "month") {     // month
                     currTimeUnit = "month";
-                    createBarChart();
                 }
+                let buttons = document.getElementsByClassName("timeUnitButton");
+                for (let i = 0; i < buttons.length; i++) {
+                    if (i == code)
+                        buttons[i].classList.add("selectedButton");
+                    else
+                        buttons[i].classList.remove("selectedButton");
+                }
+                xDomain = eval(currTimeUnit+"s");
+                updateChart();
             }
 
-            function changeEmoji() {
+            function addEmoji() {
                 let newEmoji = document.getElementById('emojiInput').elements[0].value;
-                document.getElementById('emojiList').innerHTML += " " + newEmoji;
+                if (newEmoji == "") return;
                 addEmojiToDisplay(newEmoji);
                 document.getElementById('emojiInput').elements[0].value = "";
+
+                let li = document.createElement("LI");
+                li.innerHTML = newEmoji;
+                li.setAttribute("id", newEmoji+"Item");
+                li.setAttribute("class", "emojiItem");
+                li.style.color = emojiColors[newEmoji];
+                let button = document.createElement("BUTTON");
+                button.innerHTML = "✖️";
+                button.setAttribute("class", "emojiDeleteButton");
+                button.addEventListener('click', function() {
+                    removeEmoji(newEmoji);
+                });
+                li.append(button);
+                document.getElementById('currentEmojiList').prepend(li);
+
+                updateChart();
+            }
+            function removeEmoji(emoji) {
+                //let emoji = document.getElementById('emojiInput').elements[0].value;
+                if (emoji == "") return;
+                removeEmojiToDisplay(emoji);
+                document.getElementById(emoji+"Item").remove();
+
+                updateChart();
             }
         </script>
-        <form id="emojiInput">
-            Emoji: <input type="text" name="emoji" value="😍"><br>
-        </form>
-        <button onclick="changeEmoji()">Add Emoji</button>
-        <div>Current Emojis:<span id="emojiList"></span></div>
     </body>
 </html>
 
