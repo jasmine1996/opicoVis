@@ -10,12 +10,21 @@
             body {
                 font-family: 'Lato', sans-serif;
             }
+            h3 {
+                margin-bottom: 10px;
+            }
             #timeChart {
                 float: left;
             }
+            .axis {
+                font-size: 14px;
+            }
+            #xLabel, #yLabel {
+                font-size: 18px;
+            }
             .sidebar {
                 float: right;
-                width: 35%;
+                width: 20%;
                 height: 80vh;
                 padding: 20px;
             }
@@ -36,6 +45,11 @@
                 width: 80px;
                 margin-right: 10px;
             }
+            .typeButton {
+                height: 40px;
+                width: 80px;
+                margin-right: 10px;
+            }
             .selectedButton {
                 color: white;
                 background: #8b4eb7;
@@ -51,7 +65,7 @@
                 margin-right: 10px;
             }
             #addEmojiButton {
-                height: 35.5px;
+                height: 35px;
                 border-radius: 0px 5px 5px 0px;
                 transform: translateX(-11px);
                 background: #b892d3;
@@ -76,14 +90,14 @@
         <div class="sidebar">
             <h3>Select Time Unit</h3>
             <div id="timeUnitContainer">
-                <button id="hourViewButton" class="timeUnitButton">Hours</button>
+                <button id="hourViewButton" class="timeUnitButton selectedButton">Hours</button>
                 <button id="dayViewButton" class="timeUnitButton">Days</button>
-                <button id="monthViewButton" class="timeUnitButton selectedButton">Months</button>
+                <button id="monthViewButton" class="timeUnitButton">Months</button>
             </div>
             <h3>Select Graph Type</h3>
             <div>
-                <button>Stacked</button>
-                <button>Grouped</button>
+                <button id="stackedButton" class="typeButton selectedButton">Stacked</button>
+                <button id="groupedButton" class="typeButton">Grouped</button>
             </div>
             <h3>Add Emojis</h3>
             <div class="emojiInputContainer">
@@ -97,9 +111,9 @@
             </ul>
         </div>
         <script>
-            var containerWidth = window.innerWidth * 0.6,
+            var containerWidth = window.innerWidth * 0.75,
                 containerHeight = 600;
-            var margin = {top: 50, right: 30, bottom: 20, left: 30},
+            var margin = {top: 50, right: 30, bottom: 20, left: 50},
                 width = containerWidth - margin.left - margin.right,
                 height = containerHeight - margin.top - margin.bottom;
             var svg;
@@ -136,8 +150,10 @@
             }
             var currEmojis = [];              // list of emojis currently displayed
             
-            var currTimeUnit = "month";
+            var currTimeUnit = "hour";
             var xDomain = eval(currTimeUnit+"s");
+
+            var stacked = true;
 
             d3.json('time_vis_data.json', function(error, data) {
                 dataCopy = data;
@@ -187,6 +203,23 @@
                     .attr("transform", "translate(" + margin.left + ", 0)")
                     .call(d3.axisLeft(y));
 
+                svg.append("text")
+                    .attr("id", "xLabel")         
+                    .attr("transform",
+                            "translate(" + (width/2 + margin.left) + " ," + 
+                                        (height + margin.top) + ")")
+                    .style("text-anchor", "middle")
+                    .text(currTimeUnit.charAt(0).toUpperCase() + currTimeUnit.slice(1));
+                
+                svg.append("text")  
+                    .attr("id", "yLabel")            
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 0)
+                    .attr("x", 0 - (height/2))
+                    .attr("dy", "1em")
+                    .style("text-anchor", "middle")
+                    .text("Total Count");
+
                 // group for drinks
                 svg.selectAll("g.stack")
                     .data(dataset)
@@ -195,12 +228,12 @@
                     .attr("class", "stack")
                     .attr("fill", function(d, i) { return emojiColors[d.key]; })
                     .selectAll("rect")
-                    .data(function(d) { return d; })
+                    .data((d) => addIndexToData(d))
                     .enter()
                     .append('rect')
-                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
-                    .attr("y", (d, i) => y(d[1]))
-                    .attr("width", x.bandwidth())
+                    .attr("x", (d, i) => getBarX(d, x))
+                    .attr("y", (d, i) => getBarY(d, y))
+                    .attr("width", getWidth(x))
                     .attr("height", (d, i) => y(d[0]) - y(d[1]));
             });
 
@@ -237,23 +270,25 @@
 
             function updateChart() {
                 var dataset = d3.stack().keys(currEmojis)(currData[currTimeUnit+"s"]);
-
                 // animate changes in axies
                 var x = xScale.domain(xDomain)
                     .rangeRound([margin.left, width])
                     .padding(0.1)
                     .align(0.1);
-                var y = yScale.domain([0, d3.max(dataset, function(d) {  let max = d3.max(d, function(d) { return d[1]; }); return max; })])
+                var y = yScale.domain([0, d3.max(dataset, function(d) {  let max = d3.max(d, function(d) { return stacked? d[1] : d[1] - d[0]; }); return max; })])
                     .range([height, margin.top]);
 
                 var t = d3.transition()
-                    .duration(500)
+                    .duration(500);
                 svg.select(".x")
                     .transition(t)
                     .call(d3.axisBottom(x));
                 svg.select(".y")
                     .transition(t)
                     .call(d3.axisLeft(y));
+
+                svg.select("#xLabel")
+                    .text(currTimeUnit.charAt(0).toUpperCase() + currTimeUnit.slice(1));
 
                 // update bars
                 var stacks = svg.selectAll("g.stack")
@@ -268,44 +303,57 @@
                     .attr("class", "stack")
                     .attr("fill", function(d, i) { return emojiColors[d.key]; })
                     .selectAll("rect")
-                    .data(function(d) { return d; })
+                    .data((d) => addIndexToData(d))
                     .enter()
                     .append('rect')
-                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
-                    .attr("y", (d, i) => y(d[1]))
-                    .attr("width", x.bandwidth())
+                    .attr("x", (d, i) => getBarX(d, x))
+                    .attr("y", (d, i) => getBarY(d, y))
+                    .attr("width", getWidth(x))
                     .attr("height", 0);
                 
                 var emojiBars = svg.selectAll("g.stack").selectAll("rect")
-                    .data(function(d) { return d; });
+                    .data((d) => addIndexToData(d))
                 emojiBars.exit().remove();
                 emojiBars.enter()
                     .append('rect')
-                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
-                    .attr("y", height)
+                    .attr("x", (d, i) => getBarX(d, x))
+                    .attr("y", (d, i) => getBarY(d, y))
                     .attr("width", x.bandwidth())
                     .attr("height", 0);
                 svg.selectAll("g.stack").selectAll("rect")
                     .transition(t)
-                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
-                    .attr("y", (d, i) => y(d[1]))
-                    .attr("width", x.bandwidth())
+                    .attr("x", (d, i) => getBarX(d, x))
+                    .attr("y", (d, i) => getBarY(d, y))
+                    .attr("width", getWidth(x))
                     .attr("height", (d, i) => y(d[0]) - y(d[1]));
+            }
 
-                /*svg.selectAll("g.stack")
-                    .data(dataset)
-                    .enter()
-                    .append("g")
-                    .attr("class", "stack")
-                    .attr("fill", function(d, i) { return colors[i]; })
-                    .selectAll("rect")
-                    .data(function(d) { return d; })
-                    .enter()
-                    .append('rect')
-                    .attr("x", (d, i) => x(d.data[currTimeUnit]))
-                    .attr("y", (d, i) => y(d[1]))
-                    .attr("width", x.bandwidth())
-                    .attr("height", (d, i) => y(d[0]) - y(d[1]));*/
+            function getBarY(d, y) {
+                if (stacked)
+                    return y(d[1]);
+                else
+                    return y(d[1]) + (height - y(d[0]));
+            }
+            function getBarX(d, x) {
+                if (stacked)
+                    return x(d.data[currTimeUnit]);
+                else {
+                    return x(d.data[currTimeUnit]) + getWidth(x) * d.index;
+                }
+            }
+            function getWidth(x) {
+                if (stacked)
+                    return x.bandwidth();
+                else {
+                    return x.bandwidth() / currEmojis.length;
+                }
+            }
+            function addIndexToData(d) {
+                let newD = d;
+                for (let i = 0; i < newD.length; i++) {
+                    newD[i].index = d.index;
+                }
+                return newD;
             }
 
             let viewButtons = document.getElementsByClassName("timeUnitButton");
@@ -313,6 +361,28 @@
                 viewButtons[i].addEventListener('click', function() {
                     switchView(i);
                 })
+            }
+            let typeButtons = document.getElementsByClassName("typeButton");
+            for (let i = 0; i < typeButtons.length; i++) {
+                typeButtons[i].addEventListener('click', function() {
+                    switchType(i);
+                })
+            }
+
+            function switchType(code) {
+                if (!dataReady) return;
+                if (code == 0 && !stacked) {
+                    stacked = true;
+                    document.getElementById("stackedButton").classList.add("selectedButton");
+                    document.getElementById("groupedButton").classList.remove("selectedButton");
+                    updateChart();
+                }
+                else if (code == 1 && stacked) {
+                    stacked = false;
+                    document.getElementById("groupedButton").classList.add("selectedButton");
+                    document.getElementById("stackedButton").classList.remove("selectedButton");
+                    updateChart();
+                }
             }
 
             function switchView(code) {
