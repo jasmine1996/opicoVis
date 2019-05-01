@@ -54,6 +54,9 @@
                 color: white;
                 background: #8b4eb7;
             }
+            .emojiInputContainer {
+                position: relative;
+            }
             #enterEmojiBox {    
                 height: 30px;
                 width: 28px;
@@ -64,6 +67,26 @@
                 padding: 0px 5px 2px 5px;
                 margin-right: 10px;
             }
+            #emojiKeyboard {
+                display: none;
+                width: 100%;
+                height: 260px;
+                overflow-y: scroll;
+                overflow-x: hidden;
+                border: 2px solid purple;
+                position: absolute;
+                border-radius: 5px;
+                background: white;
+                z-index: 100;
+            }
+            .emojiKey {
+                text-align: center;
+                float: left;
+                width: 30px;
+                font-size: 20px;
+                margin: 5px;
+                cursor: pointer;
+            }
             #addEmojiButton {
                 height: 35px;
                 border-radius: 0px 5px 5px 0px;
@@ -72,15 +95,24 @@
                 color: white;
             }
             #currentEmojiList {
-                list-style-type:square
+                list-style-type: square;
+                width: 70px;
             }
             .emojiItem {
+                position: relative;
                 font-size: 20px;
+                border: 0.1em solid;
+                padding: 5px 10px 7px 8px;
+                border-radius: 5px;
+                margin-bottom: 5px;
             }
             .emojiDeleteButton {
+                position: absolute;
+                right: 0;
+                top: 50%;
                 border: none;
                 font-size: 12px;
-                transform: translateY(-2px);
+                transform: translateY(-50%);
                 margin-left: 10px;
             }
         </style>
@@ -102,13 +134,14 @@
             <h3>Add Emojis</h3>
             <div class="emojiInputContainer">
                 <form id="emojiInput">
-                    <input id="enterEmojiBox" type="text" name="emoji" value="">
+                    <input id="enterEmojiBox" onclick="showKeyboard()" type="text" name="emoji" value="">
                 </form>
                 <button id="addEmojiButton" onclick="addEmoji()">➕</button>
+                <div id="emojiKeyboard"></div>
             </div>
             <h3>Currently Showing</h3>
-            <ul id="currentEmojiList">
-            </ul>
+            <div id="currentEmojiList">
+            </div>
         </div>
         <script>
             var containerWidth = window.innerWidth * 0.75,
@@ -120,7 +153,7 @@
             var xScale = d3.scaleBand();
             var yScale = d3.scaleLinear();
 
-            var colors = ["#8A2F30", "#AE3D65", "#BF45A0", "#A64ECE", "#575EDA", "#61DAE4", "#6DEC84", "#C3F379", "#FBD75E", "#FD9762", "#FF6868"];
+            var colors = ["#A64ECE", "#575EDA", "#61DAE4", "#6DEC84", "#C3F379", "#FBD75E", "#FD9762", "#FF6868", "#8A2F30", "#AE3D65", "#BF45A0", ];
             var currColorIndex = 0;
             var emojiColors = {};
             var dataCopy;
@@ -158,22 +191,6 @@
             d3.json('time_vis_data.json', function(error, data) {
                 dataCopy = data;
                 dataReady = true;
-
-                addEmojiToDisplay('\ud83c\udf57');
-                let newEmoji = '\ud83c\udf57';
-                let li = document.createElement("LI");
-                li.innerHTML = newEmoji;
-                li.setAttribute("id", newEmoji+"Item");
-                li.setAttribute("class", "emojiItem");
-                li.style.color = emojiColors[newEmoji];
-                let button = document.createElement("BUTTON");
-                button.innerHTML = "✖️";
-                button.setAttribute("class", "emojiDeleteButton");
-                button.addEventListener('click', function() {
-                    removeEmoji(newEmoji);
-                });
-                li.append(button);
-                document.getElementById('currentEmojiList').prepend(li);
 
                 svg = d3.select("#timeChart")
                     .append("svg")
@@ -235,6 +252,8 @@
                     .attr("y", (d, i) => getBarY(d, y))
                     .attr("width", getWidth(x))
                     .attr("height", (d, i) => y(d[0]) - y(d[1]));
+
+                createKeyboard();
             });
 
             function addEmojiToDisplay(emoji) {
@@ -407,17 +426,18 @@
                 updateChart();
             }
 
-            function addEmoji() {
-                let newEmoji = document.getElementById('emojiInput').elements[0].value;
+            function addEmoji(newEmoji) {
+                //let newEmoji = document.getElementById('emojiInput').elements[0].value;
                 if (newEmoji == "") return;
                 addEmojiToDisplay(newEmoji);
                 document.getElementById('emojiInput').elements[0].value = "";
 
-                let li = document.createElement("LI");
+                let li = document.createElement("DIV");
                 li.innerHTML = newEmoji;
                 li.setAttribute("id", newEmoji+"Item");
                 li.setAttribute("class", "emojiItem");
                 li.style.color = emojiColors[newEmoji];
+                li.style.background = emojiColors[newEmoji]+"66";
                 let button = document.createElement("BUTTON");
                 button.innerHTML = "✖️";
                 button.setAttribute("class", "emojiDeleteButton");
@@ -426,6 +446,8 @@
                 });
                 li.append(button);
                 document.getElementById('currentEmojiList').prepend(li);
+
+                document.getElementById('emojiKeyboard').style.display = "none";
 
                 updateChart();
             }
@@ -436,6 +458,24 @@
                 document.getElementById(emoji+"Item").remove();
 
                 updateChart();
+            }
+
+            function createKeyboard() {
+                let emojiKeys = Object.keys(dataCopy);
+                for (let i = 0; i < 300; i++) {
+                    let li = document.createElement("DIV");
+                    li.innerHTML = emojiKeys[i];
+                    li.setAttribute("id", emojiKeys[i]+"Key");
+                    li.setAttribute("class", "emojiKey");
+                    li.addEventListener('click', function() {
+                        addEmoji(emojiKeys[i]);
+                    })
+                    document.getElementById('emojiKeyboard').append(li);
+                }
+            }
+
+            function showKeyboard() {
+                document.getElementById('emojiKeyboard').style.display = "block";
             }
         </script>
     </body>
