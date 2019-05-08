@@ -232,7 +232,7 @@
             var normalized = true;
             var keyboardShown = false;
 
-            d3.json('time_vis_data_with_totals.json', function(error, data) {
+            d3.json('reviews_with_timestamps.json', function(error, data) {
                 dataCopy = data;
                 dataReady = true;
 
@@ -313,23 +313,53 @@
                 createKeyboard();
             });
 
-            function addEmojiToDisplay(emoji) {
-                currEmojis.push(emoji);              // list of emojis currently displayed
-                let emojiData = dataCopy[emoji];
-                let totalCount = 1;
-                if (normalized)
-                    totalCount = emojiData.totalCount / 100;
+            function getHourDayMonth(timestamp) {
+                let date = new Date(timestamp);
+                return {hour: date.getHours(), day: date.getDay(), month: date.getMonth()};
+            }
+
+            function getEmojiTimeData(reviews) {
+                let obj = {
+                    hours: {},
+                    days: {},
+                    months: {}
+                };
                 for (let i = 0; i < hours.length; i++) {
-                    currData.hours[i][emoji] = emojiData.hours[i].count / totalCount;
+                    obj.hours[i] = 0;
                 }
                 for (let i = 0; i < days.length; i++) {
-                    currData.days[i][emoji] = emojiData.days[i].count / totalCount;
+                    obj.days[i] = 0;
                 }
                 for (let i = 0; i < months.length; i++) {
-                    currData.months[i][emoji] = emojiData.months[i].count / totalCount;
+                    obj.months[i] = 0;
+                }
+                for (let i = 0; i < reviews.length; i++) {
+                    let timeObj = getHourDayMonth(dataCopy.reviewList[reviews[i]].timestamp);
+                    obj.hours[timeObj.hour]++;
+                    obj.days[timeObj.day]++;
+                    obj.months[timeObj.month]++;
+                }
+                return obj;
+            }
+
+            function addEmojiToDisplay(emoji) {
+                currEmojis.push(emoji);              // list of emojis currently displayed
+                let emojiData = getEmojiTimeData(dataCopy.emojiList[emoji].reviewIds);//dataCopy[emoji];
+                let totalCount = 1;
+                if (normalized)
+                    totalCount = dataCopy.emojiList[emoji].count / 100;
+                for (let i = 0; i < hours.length; i++) {
+                    currData.hours[i][emoji] = emojiData.hours[i] / totalCount;
+                }
+                for (let i = 0; i < days.length; i++) {
+                    currData.days[i][emoji] = emojiData.days[i] / totalCount;
+                }
+                for (let i = 0; i < months.length; i++) {
+                    currData.months[i][emoji] = emojiData.months[i] / totalCount;
                 }
                 emojiColors[emoji] = colors[currColorIndex];
                 currColorIndex = (currColorIndex + 1) % colors.length;
+                console.log(currData);
             }
 
             function removeEmojiToDisplay(emoji) {
@@ -352,27 +382,27 @@
                     for (let j = 0; j < currEmojis.length; j++) {
                         let emoji = currEmojis[j];
                         if (normalized)
-                            currData.hours[i][emoji] /= (dataCopy[emoji].totalCount / 100);
+                            currData.hours[i][emoji] /= (dataCopy.emojiList[emoji].count / 100);
                         else
-                            currData.hours[i][emoji] *= dataCopy[emoji].totalCount / 100;
+                            currData.hours[i][emoji] *= dataCopy.emojiList[emoji].count / 100;
                     }
                 }
                 for (let i = 0; i < days.length; i++) {
                     for (let j = 0; j < currEmojis.length; j++) {
                         let emoji = currEmojis[j];
                         if (normalized)
-                            currData.days[i][emoji] /= (dataCopy[emoji].totalCount / 100);
+                            currData.days[i][emoji] /= (dataCopy.emojiList[emoji].count / 100);
                         else
-                            currData.days[i][emoji] *= dataCopy[emoji].totalCount / 100;
+                            currData.days[i][emoji] *= dataCopy.emojiList[emoji].count / 100;
                     }
                 }
                 for (let i = 0; i < months.length; i++) {
                     for (let j = 0; j < currEmojis.length; j++) {
                         let emoji = currEmojis[j];
                         if (normalized)
-                            currData.months[i][emoji] /= (dataCopy[emoji].totalCount / 100);
+                            currData.months[i][emoji] /= (dataCopy.emojiList[emoji].count / 100);
                         else
-                            currData.months[i][emoji] *= dataCopy[emoji].totalCount / 100;
+                            currData.months[i][emoji] *= dataCopy.emojiList[emoji].count / 100;
                     }
                 }
             }
@@ -561,7 +591,7 @@
             }
 
             function createKeyboard() {
-                let emojiKeys = Object.keys(dataCopy);
+                let emojiKeys = Object.keys(dataCopy.emojiList);
                 for (let i = 0; i < 300; i++) {
                     let li = document.createElement("DIV");
                     li.innerHTML = emojiKeys[i];
