@@ -128,6 +128,11 @@
             #addEmojiButton {
                 background: #8b4eb7;
             }
+            #startHint {
+                font-size: 14px;
+                transform: translate(-15px, 5px);
+                float: left;
+            }
             #currentEmojiList {
                 position: absolute;
                 top: 10px;
@@ -205,13 +210,13 @@
                 <div class="optionsWrapper">
                     <h3>Time Unit: </h3>
                     <div class="buttonsContainer">
-                        <button id="hourViewButton" class="timeUnitButton selectedButton">Hours</button>
-                        <button id="dayViewButton" class="timeUnitButton">Days</button>
-                        <button id="monthViewButton" class="timeUnitButton">Months</button>
+                        <button id="hourViewButton" class="timeUnitButton selectedButton">Hour</button>
+                        <button id="dayViewButton" class="timeUnitButton">Day</button>
+                        <button id="monthViewButton" class="timeUnitButton">Month</button>
                     </div>
                 </div>
                 <div class="optionsWrapper">
-                    <h3>Graph Type: </h3>
+                    <h3>Bar Type: </h3>
                     <div class="buttonsContainer">
                         <button id="stackedButton" class="typeButton">Stacked</button>
                         <button id="groupedButton" class="typeButton selectedButton">Grouped</button>
@@ -226,9 +231,11 @@
                     <button id="addEmojiButton" onclick="toggleKeyboard()"><div id="addRemoveIcon">➕</div></button>
                     <div id="emojiKeyboard"></div>
                 </div>
+                <div id="startHint">⬅️ Add an emoji here!</div>
             </div>
             <div id="timeChart">
-                <div id="currentEmojiList"></div>
+                <div id="currentEmojiList">
+                </div>
             </div>
         </div>
         <div id="sideBox">
@@ -658,6 +665,8 @@
 
             function addEmoji(newEmoji) {
                 if (currEmojis.includes(newEmoji)) return;
+                if (currEmojis.length == 0)
+                    document.getElementById("startHint").style.display = "none";
                 addEmojiToDisplay(newEmoji);
 
                 let li = document.createElement("DIV");
@@ -681,6 +690,8 @@
                 if (emoji == "") return;
                 removeEmojiToDisplay(emoji);
                 document.getElementById(emoji+"Item").remove();
+                if (currEmojis.length == 0)
+                    document.getElementById("startHint").style.display = "block";
 
                 updateChart();
             }
