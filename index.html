@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>D3 Bar Chart</title>
+        <title>Opico Time Vis</title>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
         <script src="http://d3js.org/d3.v4.min.js"></script>
         <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
@@ -32,6 +32,8 @@
             .topbar {
                 margin: 10px 0 10px 60px;
                 height: 30px;
+                width: 70vw;
+                float: left;
             }
             .optionsWrapper {
                 float: left;
@@ -156,6 +158,40 @@
                 transform: rotate(45deg);
                 transition: transform 0.25s;
             }
+            #sideBox {
+                float: left;
+                width: 20vw;
+                margin-right: 25px;
+            }
+            #detailsTitle {
+                margin-top: 0;
+            }
+            #currentReviewsList {
+                width: 100%;
+                height: 550px;
+                overflow-y: scroll;
+                padding: 10px;
+                border: 2px solid #8b4eb7;
+                border-radius: 10px;
+            }
+            .emojiReviewItem {
+                padding: 5px;
+            }
+            .emojiReviewItem:hover {
+                background: #DDDDDD;
+            }
+            .reviewEmojis {
+            }
+            .singleEmoji {
+                font-size: 18px;
+                margin: 0 1px;
+                display: inline;
+                cursor: pointer;
+            }
+            .reviewPlace {
+                font-size: 12px;
+                text-align: right;
+            }
         </style>
     </head>
     <body>
@@ -171,8 +207,8 @@
             <div class="optionsWrapper">
                 <h3>Graph Type: </h3>
                 <div class="buttonsContainer">
-                    <button id="stackedButton" class="typeButton selectedButton">Stacked</button>
-                    <button id="groupedButton" class="typeButton">Grouped</button>
+                    <button id="stackedButton" class="typeButton">Stacked</button>
+                    <button id="groupedButton" class="typeButton selectedButton">Grouped</button>
                 </div>
             </div>
             <div class="optionsWrapper">
@@ -187,6 +223,12 @@
         </div>
         <div id="timeChart">
             <div id="currentEmojiList"></div>
+        </div>
+        <div id="sideBox">
+            <h3 id="detailsTitle">Emoji Details</h3>
+            <div id="currentReviewsList">
+                <i>Select a bar for a time for an emoji to see reactions containing that emoji at that time</i>
+            </div>
         </div>
         <script>
             var containerWidth = window.innerWidth * 0.75,
@@ -206,7 +248,7 @@
             const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             const hours = [];
             for (let i = 0; i < 24; i++) {
-                hours.push(i.toString());
+                hours.push(i);
             }
             const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             var currData = {
@@ -228,9 +270,12 @@
             var currTimeUnit = "hour";
             var xDomain = eval(currTimeUnit+"s");
 
-            var stacked = true;
+            var stacked = false;
             var normalized = true;
             var keyboardShown = false;
+
+            var currEmj = "";
+            var currTime = "";
 
             d3.json('reviews_with_timestamps.json', function(error, data) {
                 dataCopy = data;
@@ -293,23 +338,6 @@
                             return "Count"
                     });
 
-                // group for drinks
-                svg.selectAll("g.stack")
-                    .data(dataset)
-                    .enter()
-                    .append("g")
-                    .attr("class", "stack")
-                    .attr("id", (d) => d.key+"stack")
-                    .attr("fill", (d) => emojiColors[d.key])
-                    .selectAll("rect")
-                    .data((d) => addIndexToData(d))
-                    .enter()
-                    .append('rect')
-                    .attr("x", (d, i) => getBarX(d, x))
-                    .attr("y", (d, i) => getBarY(d, y))
-                    .attr("width", getWidth(x))
-                    .attr("height", (d, i) => y(d[0]) - y(d[1]));
-
                 createKeyboard();
             });
 
@@ -359,7 +387,6 @@
                 }
                 emojiColors[emoji] = colors[currColorIndex];
                 currColorIndex = (currColorIndex + 1) % colors.length;
-                console.log(currData);
             }
 
             function removeEmojiToDisplay(emoji) {
@@ -463,7 +490,8 @@
                     .attr("x", (d, i) => getBarX(d, x))
                     .attr("y", (d, i) => getBarY(d, y))
                     .attr("width", getWidth(x))
-                    .attr("height", 0);
+                    .attr("height", 0)
+                    .on("click", (d, i) => showReviewsThisTime(d.index, i));
                 
                 var emojiBars = svg.selectAll("g.stack").selectAll("rect")
                     .data((d) => addIndexToData(d))
@@ -473,7 +501,8 @@
                     .attr("x", (d, i) => getBarX(d, x))
                     .attr("y", (d, i) => getBarY(d, y))
                     .attr("width", x.bandwidth())
-                    .attr("height", 0);
+                    .attr("height", 0)
+                    .on("click", (d, i) => showReviewsThisTime(d.index, i));
                 svg.selectAll("g.stack").selectAll("rect")
                     .transition(t)
                     .attr("x", (d, i) => getBarX(d, x))
@@ -508,6 +537,65 @@
                     newD[i].index = d.index;
                 }
                 return newD;
+            }
+            
+            function showReviewsThisTime(ind, time) {
+                let newTime = eval(currTimeUnit+"s")[time];
+                if (currEmojis[ind] == currEmj && newTime == currTime) return;
+                document.getElementById('currentReviewsList').innerHTML = "";
+                let reviewsThisTime = getReviewsThisTime(currEmojis[ind], time);
+                let uniqueReviews = reviewsThisTime.filter(function(item, index){
+                        return reviewsThisTime.indexOf(item) >= index;
+                    });
+                for (let i = 0; i < uniqueReviews.length; i++) {
+                    let li = document.createElement("DIV");
+                    li.setAttribute("class", "emojiReviewItem");
+                    let emojiDiv = document.createElement("DIV");
+                    let eList = uniqueReviews[i].emojis;
+                    for (let j = 0; j < eList.length; j++) {
+                        let e = document.createElement("DIV");
+                        e.innerHTML = eList[j];
+                        e.setAttribute("class", "singleEmoji");
+                        e.addEventListener('click', function() {
+                            addEmoji(eList[j]);
+                        })
+                        emojiDiv.append(e);
+                    }
+                    //emojiDiv.innerHTML = uniqueReviews[i].emojis;
+                    emojiDiv.setAttribute("class", "reviewEmojis");
+                    li.append(emojiDiv);
+                    let placeDiv = document.createElement("DIV");
+                    placeDiv.innerHTML = uniqueReviews[i].place;
+                    placeDiv.setAttribute("class", "reviewPlace");
+                    let typeSpan = document.createElement("span");
+                    typeSpan.innerHTML = " (" + uniqueReviews[i].placeType.split("_").join(" ") + ")";
+                    placeDiv.append(typeSpan);
+                    li.append(placeDiv);
+                    document.getElementById('currentReviewsList').append(li);
+                }
+                currEmj = currEmojis[ind];
+                currTime = eval(currTimeUnit+"s")[time];
+                let timeString = "";
+                if (currTimeUnit == "hour") {
+                    let suffix = time >= 12 ? "pm":"am";
+                    timeString = " at " + ((currTime + 11) % 12 + 1) + suffix;
+                }
+                else if (currTimeUnit == "day")
+                    timeString = " on " + currTime;
+                else
+                    timeString = " in " + currTime;
+                
+                document.getElementById('detailsTitle').innerHTML = "Reactions containing " + currEmj + timeString;
+            }
+            function getReviewsThisTime(emj, time) {
+                let reviewIds = dataCopy.emojiList[emj].reviewIds;
+                let matchList = [];
+                for (let i = 0; i < reviewIds.length; i++) {
+                    let timeObj = getHourDayMonth(dataCopy.reviewList[reviewIds[i]].timestamp);
+                    if ((currTimeUnit == "hour" && timeObj.hour == time) || (currTimeUnit == "day" && timeObj.day == time) || (currTimeUnit == "month" && timeObj.month == time))
+                        matchList.push(dataCopy.reviewList[reviewIds[i]])
+                }
+                return matchList;
             }
 
             let viewButtons = document.getElementsByClassName("timeUnitButton");
@@ -562,7 +650,7 @@
             }
 
             function addEmoji(newEmoji) {
-                if (newEmoji == "") return;
+                if (currEmojis.includes(newEmoji)) return;
                 addEmojiToDisplay(newEmoji);
 
                 let li = document.createElement("DIV");
