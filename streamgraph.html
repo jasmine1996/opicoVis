@@ -4,141 +4,179 @@
 
 <!-- Load d3.js & color scale-->
 <script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://d3js.org/queue.v1.min.js"></script>
 <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
 
 <!-- Create a div where the graph will take place -->
-<div id="my_dataviz"></div>
-
+<div id="streamGraph"></div>
 
 <script>
+  // set the dimensions and margins of the graph
+  var margin = {top: 0, right: 30, bottom: 0, left: 30},
+      width = 1200 - margin.left - margin.right,
+      height = 600 - margin.top - margin.bottom;
 
-// set the dimensions and margins of the graph
-var margin = {top: 20, right: 30, bottom: 0, left: 30},
-    width = 1400 - margin.left - margin.right,
-    height = 800 - margin.top - margin.bottom;
+  var timeFormat = d3.timeFormat("%m-%Y");
 
-var timeFormat = d3.timeFormat("%m-%Y");
+  // append the svg object to the body of the page
+  var svg = d3.select("#streamGraph")
+              .append("svg")
+              .attr("width", width + margin.left + margin.right)
+              .attr("height", height + margin.top + margin.bottom)
+              .append("g")
+              .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-// append the svg object to the body of the page
-var svg = d3.select("#my_dataviz")
-  .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform",
-          "translate(" + margin.left + "," + margin.top + ")");
+  var allData;
+  var categories;
+  var currEmojisList;
+  var keys;
+  var currCategory = "all";
 
-// Parse the Data
-d3.csv("All Top 10 Monthly Counts without other sorted.csv", function(data) {
-
-  // List of groups = header of the csv files
-  var keys = data.columns.slice(1);
-  console.log(keys);
-
-  // Add X axis
-  var x = d3.scaleLinear()
-    .domain(d3.extent(data, function(d) { return d.month; }))
-    .range([ 0, width ]);
-  svg.append("g")
-    .attr("transform", "translate(0," + height*0.8 + ")")
-    .call(d3.axisBottom(x).tickSize(-height*.7).tickValues([1488326400000, 1491004800000, 1493596800000, 1496275200000, 1498867200000, 1501545600000, 1504224000000, 1506816000000, 1509494400000, 1512086400000, 1514764800000, 1517443200000, 1519862400000, 1522540800000, 1525132800000, 1527811200000, 1530403200000, 1533081600000, 1535760000000, 1538352000000, 1541030400000, 1543622400000, 1546300800000, 1548979200000]).tickFormat(timeFormat))
-    .select(".domain").remove();
-  // Customization
-  svg.selectAll(".tick line").attr("stroke", "#b8b8b8");
-
-  // Add X axis label:
-  svg.append("text")
-      .attr("text-anchor", "end")
-      .attr("x", width/2)
-      .attr("y", height-90)
-      .text("Time (month)");
-
-  // Add Y axis
-  var y = d3.scaleLinear()
-    .domain([-450, 350])
-    .range([ height, 0 ]);
-
-  // color palette
-  var color = d3.scaleOrdinal()
-    .domain(keys)
-    .range(d3.schemeDark2);
-
-  //stack the data?
-  var stackedData = d3.stack()
-    .offset(d3.stackOffsetSilhouette)
-    .keys(keys)
-    (data);
-
-  console.log(stackedData);
-
-  // create a tooltip
-  var Tooltip = svg
-    .append("text")
-    .attr("x", 0)
-    .attr("y", 0)
-    .style("opacity", 0)
-    .style("font-size", 17)
-
-  // Three function that change the tooltip when user hover / move / leave a cell
-  var mouseover = function(d) {
-    Tooltip.style("opacity", 1)
-    d3.selectAll(".myArea").style("opacity", .2)
-    d3.select(this)
-      .style("stroke", "black")
-      .style("opacity", 1)
+  queue()
+    .defer(d3.json, "monthly_counts_all_emojis.json")
+    .defer(d3.json, "categories.json")
+    .await(ready);
+    
+  // Parse the Data
+  function ready(error, monthsData, categoriesData) {
+    allData = monthsData;
+    categories = categoriesData;
+    createGraph(processData());
   }
-  var mousemove = function(d,i) {
-    grp = keys[i]
-    Tooltip.text(grp)
+
+  // get object of top 10 emojis with highest counts
+  function getTop10(emojiCounts) {
+    let entries = Object.entries(emojiCounts);
+    if (currCategory !== "all")
+      entries = entries.filter(item => categories[currCategory].includes(item[0]));
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries.slice(0, 10).map(item => item[0]);
   }
-  var mouseleave = function(d) {
-    Tooltip.style("opacity", 0)
-    d3.selectAll(".myArea").style("opacity", 1).style("stroke", "none")
-   }
 
-  // Area generator
-  var area = d3.area()
-    .x(function(d) { return x(d.data.month); })
-    .y0(function(d) { return y(d[0]); })
-    .y1(function(d) { return y(d[1]); })
+  function getAllTopEmojisRanked() {
+    let uniqueEmojiCounts = {};
+    let monthStamps = Object.keys(allData);
+    for (let i = 0; i < monthStamps.length; i++) {
+      let top10List = getTop10(allData[monthStamps[i]]);
+      for (let j = 0; j < top10List.length; j++) {
+        if (top10List[j] in uniqueEmojiCounts) {
+          uniqueEmojiCounts[top10List[j]] += 1;
+        }
+        else {
+          uniqueEmojiCounts[top10List[j]] = 1;
+        }
+      }
+    }
+    let entries = Object.entries(uniqueEmojiCounts);
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries;
+  }
 
-  // Show the areas
-  svg
-    .selectAll("mylayers")
-    .data(stackedData)
-    .enter()
-    .append("path")
+  // get the top 10 emojis at each timestamp and turn it into the format that stack() wants
+  function processData() {
+    currEmojisList = getAllTopEmojisRanked();
+    keys = currEmojisList.map(item => item[0]);
+    let retData = [];
+    let monthStamps = Object.keys(allData);
+    for (let i = 0; i < monthStamps.length; i++) {
+      let obj = {month: monthStamps[i]*1000};
+      let top10List = getTop10(allData[monthStamps[i]]);
+      keys.forEach(item => {
+        if (top10List.includes(item)) {
+          obj[item] = allData[monthStamps[i]][item];
+        }
+        else {
+          obj[item] = 0;
+        }
+      });
+      retData.push(obj);
+    }
+    return retData;
+  }
+
+  function createGraph(data) {
+    // Add X axis
+    var x = d3.scaleLinear()
+      .domain(d3.extent(data, function(d) { return d.month; }))
+      .range([ 0, width ]);
+    svg.append("g")
+      .attr("transform", "translate(0," + height*0.95 + ")")
+      .call(d3.axisBottom(x).tickSize(-height*.95).tickValues([1501545600000, 1504224000000, 1506816000000, 1509494400000, 1512086400000, 1514764800000, 1517443200000, 1519862400000, 1522540800000, 1525132800000, 1527811200000, 1530403200000, 1533081600000, 1535760000000, 1538352000000, 1541030400000, 1543622400000, 1546300800000, 1548979200000]).tickFormat(timeFormat))
+      .select(".domain").remove();
+
+    // Customization
+    svg.selectAll(".tick line").attr("stroke", "#b8b8b8");
+
+    // Add X axis label:
+    svg.append("text")
+        .attr("text-anchor", "end")
+        .attr("x", width/2)
+        .attr("y", height)
+        .text("Time (month)");
+
+    // Add Y axis
+    var y = d3.scaleLinear()
+              .domain([-300, 280])
+              .range([ height, 0 ]);
+
+    //stack the data?
+    var stackedData = d3.stack()
+                        .offset(d3.stackOffsetSilhouette)
+                        .keys(keys)(data);
+
+    // create a tooltip
+    var Tooltip = svg.append("text")
+                    .attr("x", 1130)
+                    .attr("y", 20)
+                    .style("opacity", 0)
+                    .style("font-size", 17);
+
+    // Three function that change the tooltip when user hover / move / leave a cell
+    var mouseover = function(d) {
+      Tooltip.style("opacity", 1);
+      d3.selectAll(".myArea").style("opacity", .2);
+      d3.select(this)
+        .style("stroke", "black")
+        .style("opacity", 1);
+    }
+    var mousemove = function(d,i) {
+      grp = keys[i];
+      Tooltip.text(grp);
+    }
+    var mouseleave = function(d) {
+      Tooltip.style("opacity", 0);
+      d3.selectAll(".myArea").style("opacity", 1).style("stroke", "none");
+    }
+
+    // Area generator
+    var area = d3.area()
+      .x(function(d) { return x(d.data.month); })
+      .y0(function(d) { return y(d[0]); })
+      .y1(function(d) { return y(d[1]); });
+
+    // Show the areas
+    svg.selectAll("mylayers")
+      .data(stackedData)
+      .enter()
+      .append("path")
       .attr("class", "myArea")
       .style("fill", function(d, i) {
-        console.log(i);
+        let numTotal = keys.length - 1;
+        numTotal -= numTotal % 5;
         if (i%5 == 1)
-          return d3.interpolateBrBG((i-1)/50);
+          return d3.interpolateBrBG((i-1)/numTotal);
         else if (i%5 == 2)
-          return d3.interpolateCool((i-2)/50);
+          return d3.interpolateCool((i-2)/numTotal);
         else if (i%5 == 3)
-          return d3.interpolateSinebow((i-3)/50);
+          return d3.interpolateSinebow((i-3)/numTotal);
         else if (i%5 == 4)
-          return d3.interpolatePlasma((54-i)/50);
+          return d3.interpolatePlasma((54-i)/numTotal);
         else
-          return d3.interpolateCubehelixDefault(((i)/50)*0.9);
-        /*
-        if (i%6 == 0)
-          return d3.interpolateSinebow(i/48);
-        else if (i%6 == 1)
-          return d3.interpolateRainbow((i-1)/48);
-        else if (i%6 == 2)
-          return d3.interpolatePlasma((50-i)/48);
-        else if (i%6 == 3)
-          return d3.interpolateCool((i-3)/48);
-        else if (i%6 == 4)
-          return d3.interpolateCubehelixDefault((i-4)/48);
-        else
-          return d3.interpolateBrBG((i-5)/48);*/
+          return d3.interpolateCubehelixDefault((i/numTotal)*0.9);
       })
       .attr("d", area)
       .on("mouseover", mouseover)
       .on("mousemove", mousemove)
       .on("mouseleave", mouseleave)
-
-})
+  }
 </script>
