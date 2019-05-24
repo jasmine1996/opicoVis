@@ -273,8 +273,11 @@
       streams.exit().remove();
       streams.enter()
         .append("path")
-        .attr("d", "M 0 0");
-      streams.transition()
+        .attr("d", area)
+        .attr("class", "stream")
+        .style("fill", "white");
+      svg.selectAll(".stream")
+        .transition()
         .duration(500)
         .attr("class", "stream")
         .attr("id", (d) => d.key+"Stream")
