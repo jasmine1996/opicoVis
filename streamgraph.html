@@ -12,10 +12,10 @@
     #streamGraph {
       float: left;
     }
-    #legendWrapper {
+    #sideBar {
+      float: left;
       width: 200px;
       height: 600px;
-      overflow-y: scroll;
     }
     .emojiLegends {
       height: 24px;
@@ -34,12 +34,75 @@
       border-radius: 5px;
       padding: 2px 5px 0 5px;
     }
+    .dropdownButton {
+      background-color: #3498DB;
+      color: white;
+      padding: 16px;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+    }
+    .dropdownButton:hover, .dropdownButton:focus {
+      background-color: #2980B9;
+    }
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .dropdownContent {
+      display: none;
+      position: absolute;
+      background-color: #f1f1f1;
+      min-width: 160px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1;
+    }
+    .dropdownContent a {
+      color: black;
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+    }
+    .dropdownContent a:hover {
+      background-color: #ddd;
+    }
+    .show {
+      display: block;
+    }
+    .compWrapper {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    #legendWrapper {
+      height: 400px;
+      overflow-y: scroll;
+    }
+    #detailView {
+      height: 200px;
+      overflow-y: scroll;
+    }
   </style>
 </head>
 <body>
   <!-- Create a div where the graph will take place -->
   <div id="streamGraph"></div>
-  <div id="legendWrapper"></div>
+  <div id="sideBar">
+    <div class="compWrapper">
+      <div>Select Category:</div>
+      <select id="categoryDropdown" onchange="setCategory()">
+        <option value="all" selected="selected">all</option>
+      </select>
+    </div>
+    <div class="compWrapper">
+      <div>Legend</div>
+      <div id="legendWrapper"></div>
+    </div>
+    <div class="compWrapper">
+      <div>Details</div>
+      <div id="detailView">
+      </div>
+    </div>
+  </div>
 
   <script>
     // set the dimensions and margins of the graph
@@ -59,6 +122,7 @@
     var x;  // x axis
     var y;  // y axis
     var tooltip;
+    var streams;
 
     var allData;
     var categories;
@@ -75,6 +139,16 @@
     function ready(error, monthsData, categoriesData) {
       allData = monthsData;
       categories = categoriesData;
+      d3.select("#categoryDropdown")
+        .selectAll(".category")
+        .data(Object.keys(categories))
+        .enter()
+        .append("option")
+        .attr("class", "category")
+        .attr("value", (d) => d)
+        .text((d) => d)
+        .on("select", (d) => setCategory(d));
+      
       initializeGraph(processData());
     }
 
@@ -82,9 +156,9 @@
     function getTop10(emojiCounts) {
       let entries = Object.entries(emojiCounts);
       if (currCategory !== "all")
-        entries = entries.filter(item => categories[currCategory].includes(item[0]));
+        entries = entries.filter(item => item[0] in categories[currCategory]);
       entries.sort((a, b) => b[1] - a[1]);
-      return entries.slice(0, 10).map(item => item[0]);
+      return entries.slice(0, 10).filter(item => item[1] > 0).map(item => item[0]);
     }
 
     function getAllTopEmojisRanked() {
@@ -148,22 +222,17 @@
           .attr("y", height)
           .text("Time (month)");
 
-      // Add Y axis
-      y = d3.scaleLinear()
-                .domain([-300, 280])
-                .range([ height, 0 ]);
-
       //stack the data
       let stackedData = d3.stack()
                           .offset(d3.stackOffsetSilhouette)
                           .keys(keys)(data);
+      // Add Y axis
+      y = d3.scaleLinear()
+                .domain([d3.min(stackedData[0].map(item => item[0]))-50, d3.max(stackedData[stackedData.length-1].map(item => item[1]))+20])
+                .range([ height, 0 ]);
 
       // create a tooltip
-      tooltip = svg.append("text")
-                  .attr("x", 1130)
-                  .attr("y", 20)
-                  .style("opacity", 0)
-                  .style("font-size", 17);
+      tooltip = d3.select("#detailView");
 
       // Area generator
       let area = d3.area()
@@ -172,7 +241,7 @@
         .y1(function(d) { return y(d[1]); });
 
       // Show the areas
-      svg.selectAll("layers")
+      svg.selectAll(".stream")
         .data(stackedData)
         .enter()
         .append("path")
@@ -181,6 +250,37 @@
         .style("fill", (d, i) => getEmojiColor(i))
         .attr("d", area)
         .on("mouseover", mouseover)
+        .on("mousemove", mousemove)
+        .on("mouseleave", mouseleave);
+
+      drawLegend();
+    }
+
+    function updateGraph(data) {
+      let stackedData = d3.stack()
+                          .offset(d3.stackOffsetSilhouette)
+                          .keys(keys)(data);
+      y = d3.scaleLinear()
+            .domain([d3.min(stackedData[0].map(item => item[0])), d3.max(stackedData[stackedData.length-1].map(item => item[1]))])
+            .range([ height-50, 20]);
+      let area = d3.area()
+        .x(function(d) { return x(d.data.month); })
+        .y0(function(d) { return y(d[0]); })
+        .y1(function(d) { return y(d[1]); });
+      
+      let streams = svg.selectAll(".stream")
+        .data(stackedData);
+      streams.exit().remove();
+      streams.enter()
+        .append("path")
+        .attr("d", "M 0 0");
+      streams.transition()
+        .duration(500)
+        .attr("class", "stream")
+        .attr("id", (d) => d.key+"Stream")
+        .style("fill", (d, i) => getEmojiColor(i))
+        .attr("d", area);
+      streams.on("mouseover", mouseover)
         .on("mousemove", mousemove)
         .on("mouseleave", mouseleave);
 
@@ -208,6 +308,7 @@
     }
 
     function drawLegend() {
+      d3.selectAll(".emojiLegends").remove();
       let legends = d3.select("#legendWrapper")
         .selectAll("div")
         .data(currEmojisList)
@@ -242,6 +343,15 @@
           return d3.interpolateSinebow((i-4)/numTotal);
         else
           return d3.interpolateCubehelixDefault((i/numTotal)*0.8+0.1);
+    }
+
+    function setCategory() {
+      currCategory = d3.select('#categoryDropdown').property('value');
+      updateGraph(processData());
+      openDropdown();
+    }
+    function openDropdown() {
+      document.getElementById("categoryDropdown").classList.toggle("show");
     }
   </script>
 </body>
