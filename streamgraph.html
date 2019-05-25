@@ -283,7 +283,8 @@
         .attr("id", (d) => d.key+"Stream")
         .style("fill", (d, i) => getEmojiColor(i))
         .attr("d", area);
-      streams.on("mouseover", mouseover)
+      svg.selectAll(".stream")
+        .on("mouseover", mouseover)
         .on("mousemove", mousemove)
         .on("mouseleave", mouseleave);
 
