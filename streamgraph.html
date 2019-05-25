@@ -18,7 +18,7 @@
     }
     #sideBar {
       float: left;
-      width: 200px;
+      width: 250px;
       height: 600px;
     }
     .emojiLegends {
@@ -186,18 +186,20 @@
       let uniqueEmojiCounts = {};
       let monthStamps = Object.keys(allData);
       for (let i = 0; i < monthStamps.length; i++) {
-        let top10List = getTop10(allData[monthStamps[i]]).map(item => item[0]);
+        let top10List = getTop10(allData[monthStamps[i]]);
         for (let j = 0; j < top10List.length; j++) {
-          if (top10List[j] in uniqueEmojiCounts) {
-            uniqueEmojiCounts[top10List[j]] += 1;
+          if (top10List[j][0] in uniqueEmojiCounts) {
+            uniqueEmojiCounts[top10List[j][0]].frequency += 1;
+            uniqueEmojiCounts[top10List[j][0]].total += top10List[j][1];
           }
           else {
-            uniqueEmojiCounts[top10List[j]] = 1;
+            uniqueEmojiCounts[top10List[j][0]] = {frequency: 1, total: top10List[j][1]};
           }
         }
       }
       let entries = Object.entries(uniqueEmojiCounts);
-      entries.sort((a, b) => b[1] - a[1]);
+      console.log(entries);
+      entries.sort((a, b) => b[1].frequency - a[1].frequency);
       return entries;
     }
 
@@ -426,7 +428,7 @@
       legends.append("div")
         .attr("class", "frequencyLabels")
         .text(d => {
-          return `${d[1]} month${d[1]==1?"":"s"}`;
+          return `${d[1].frequency} month${d[1].frequency==1?"":"s"}, ${d[1].total} total`;
         });
     }
 
