@@ -7,8 +7,19 @@
   <script src="https://d3js.org/d3.v4.js"></script>
   <script src="https://d3js.org/queue.v1.min.js"></script>
   <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
 
   <style>
+    body {
+      font-family: 'Lato', sans-serif;
+      margin: 0;
+      background: #F0EDF4;
+    }
+    h2 {
+      font-size: 32px;
+      margin: 10px auto;
+      text-align: center;
+    }
     #streamGraph {
       float: left;
     }
@@ -22,21 +33,29 @@
       height: 600px;
     }
     .emojiLegends {
-      height: 24px;
+      height: 22px;
       padding: 5px 20px;
-      font-size: 16px;
+      position: relative;
     }
     .emojiKeys {
       height: 24px;
       float: left;
     }
     .frequencyLabels {
-      height: 22px;
+      height: 16px;
+      font-size: 12px;
       float: right;
       background: white;
       color: black;
-      border-radius: 5px;
+      border-radius: 2px;
       padding: 2px 5px 0 5px;
+      position: relative;
+      top: 2px;
+    }
+    #categoryDropdown {
+      height: 24px;
+      border: 1px solid black;
+      border-radius: 5px;
     }
     .dropdownButton {
       background-color: #3498DB;
@@ -77,12 +96,17 @@
       width: 100%;
       margin-bottom: 10px;
     }
+    .sideHeading {
+      font-weight: bold;
+      margin: 5px 0;
+      font-size: 16px;
+    }
     #legendWrapper {
-      height: 400px;
+      height: 320px;
       overflow-y: scroll;
     }
     #detailView {
-      height: 220px;
+      max-height: 220px;
       column-count: 2
     }
     .tooltip {	
@@ -103,21 +127,21 @@
   </style>
 </head>
 <body>
-  <!-- Create a div where the graph will take place -->
+  <h2>Monthly Top 10 Emojis in Opico (Aug. 2017 - Feb 2019)</h2>
   <div id="streamGraph"></div>
   <div id="sideBar">
     <div class="compWrapper">
-      <div>Select Category:</div>
+      <div class="sideHeading">Select Category:</div>
       <select id="categoryDropdown" onchange="setCategory()">
         <option value="all" selected="selected">all</option>
       </select>
     </div>
     <div class="compWrapper">
-      <div>Legend</div>
+      <div class="sideHeading">Legend</div>
       <div id="legendWrapper"></div>
     </div>
     <div class="compWrapper">
-      <div>Details<span id="currDetail"></span></div>
+      <div class="sideHeading">Details<span id="currDetail"></span></div>
       <div id="detailView">
       </div>
     </div>
@@ -198,8 +222,12 @@
         }
       }
       let entries = Object.entries(uniqueEmojiCounts);
-      console.log(entries);
-      entries.sort((a, b) => b[1].frequency - a[1].frequency);
+      entries.sort((a, b) => {
+        if (b[1].frequency == a[1].frequency)
+          return b[1].total - a[1].total;
+        else
+          return b[1].frequency - a[1].frequency;
+      });
       return entries;
     }
 
