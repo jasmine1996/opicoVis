@@ -52,42 +52,16 @@
       position: relative;
       top: 2px;
     }
-    #categoryDropdown {
-      height: 24px;
+    .dropdown {
+      font-size: 14px;
       border: 1px solid black;
       border-radius: 5px;
-    }
-    .dropdownButton {
-      background-color: #3498DB;
-      color: white;
-      padding: 16px;
-      font-size: 16px;
-      border: none;
-      cursor: pointer;
-    }
-    .dropdownButton:hover, .dropdownButton:focus {
-      background-color: #2980B9;
-    }
-    .dropdown {
+      margin: auto 3px;
       position: relative;
       display: inline-block;
     }
-    .dropdownContent {
-      display: none;
-      position: absolute;
-      background-color: #f1f1f1;
-      min-width: 160px;
-      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-      z-index: 1;
-    }
-    .dropdownContent a {
-      color: black;
-      padding: 12px 16px;
-      text-decoration: none;
-      display: block;
-    }
-    .dropdownContent a:hover {
-      background-color: #ddd;
+    option {
+      font-family: 'Lato', sans-serif;
     }
     .show {
       display: block;
@@ -127,14 +101,36 @@
   </style>
 </head>
 <body>
-  <h2>Monthly Top 10 Emojis in Opico (Aug. 2017 - Feb. 2019)</h2>
+  <h2>Monthly Top Emojis in Opico (Aug. 2017 - Feb. 2019)</h2>
   <div id="streamGraph"></div>
   <div id="sideBar">
     <div class="compWrapper">
-      <div class="sideHeading">Select Category:</div>
-      <select id="categoryDropdown" onchange="setCategory()">
-        <option value="all" selected="selected">all</option>
-      </select>
+      <div class="sideHeading">Show top 
+        <select id="numDropdown" class="dropdown" onchange="setTopNum()">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10" selected="selected">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        emojis
+      </div>
+    </div>
+    <div class="compWrapper">
+      <div class="sideHeading">Emoji Category:
+        <select id="categoryDropdown" class="dropdown" onchange="setCategory()">
+          <option value="all" selected="selected">all</option>
+        </select>
+      </div>
     </div>
     <div class="compWrapper">
       <div class="sideHeading">Legend</div>
@@ -174,6 +170,7 @@
     var keys;
     var currCategory = "all";
     var currDetail;
+    var topNum = 5;
 
     queue()
       .defer(d3.json, "monthly_counts_all_emojis.json")
@@ -198,19 +195,19 @@
     }
 
     // get object of top 10 emojis with highest counts
-    function getTop10(emojiCounts) {
+    function getTopN(emojiCounts) {
       let entries = Object.entries(emojiCounts);
       if (currCategory !== "all")
         entries = entries.filter(item => item[0] in categories[currCategory]);
       entries.sort((a, b) => b[1] - a[1]);
-      return entries.slice(0, 10).filter(item => item[1] > 0);
+      return entries.slice(0, topNum).filter(item => item[1] > 0);
     }
 
     function getAllTopEmojisRanked() {
       let uniqueEmojiCounts = {};
       let monthStamps = Object.keys(allData);
       for (let i = 0; i < monthStamps.length; i++) {
-        let top10List = getTop10(allData[monthStamps[i]]);
+        let top10List = getTopN(allData[monthStamps[i]]);
         for (let j = 0; j < top10List.length; j++) {
           if (top10List[j][0] in uniqueEmojiCounts) {
             uniqueEmojiCounts[top10List[j][0]].frequency += 1;
@@ -239,7 +236,7 @@
       let monthStamps = Object.keys(allData);
       for (let i = 0; i < monthStamps.length; i++) {
         let obj = {month: monthStamps[i]*1000};
-        let top10List = getTop10(allData[monthStamps[i]]).map(item => item[0]);
+        let top10List = getTopN(allData[monthStamps[i]]).map(item => item[0]);
         keys.forEach(item => {
           if (top10List.includes(item)) {
             obj[item] = allData[monthStamps[i]][item];
@@ -398,7 +395,7 @@
         .remove();
       d3.select("#detailView")
         .selectAll(".detailItems")
-        .data(getTop10(allData[d/1000]))
+        .data(getTopN(allData[d/1000]))
         .enter()
         .append("div")
         .attr("class", "detailItems")
@@ -462,26 +459,27 @@
 
     function getEmojiColor(i) {
       let numTotal = keys.length - 1;
+      if (numTotal >= 5)
         numTotal -= numTotal % 5;
-        if (i%5 == 1)
-          return d3.interpolateCool((i-1)/numTotal);
-        else if (i%5 == 2)
-          return d3.interpolatePlasma((i-2)/numTotal);
-        else if (i%5 == 3)
-          return d3.interpolateBrBG((i-3)/numTotal*0.9+0.05);
-        else if (i%5 == 4)
-          return d3.interpolateSinebow((i-4)/numTotal);
-        else
-          return d3.interpolateCubehelixDefault((i/numTotal)*0.8+0.1);
+      if (i%5 == 1)
+        return d3.interpolateCool((i-1)/numTotal);
+      else if (i%5 == 2)
+        return d3.interpolatePlasma((i-2)/numTotal);
+      else if (i%5 == 3)
+        return d3.interpolateBrBG((i-3)/numTotal*0.9+0.05);
+      else if (i%5 == 4)
+        return d3.interpolateSinebow((i-4)/numTotal);
+      else
+        return d3.interpolateCubehelixDefault((i/numTotal)*0.8+0.1);
     }
 
     function setCategory() {
       currCategory = d3.select('#categoryDropdown').property('value');
       updateGraph(processData());
-      openDropdown();
     }
-    function openDropdown() {
-      document.getElementById("categoryDropdown").classList.toggle("show");
+    function setTopNum() {
+      topNum = d3.select('#numDropdown').property('value');
+      updateGraph(processData());
     }
   </script>
 </body>
