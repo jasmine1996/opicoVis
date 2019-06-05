@@ -1,0 +1,94 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <style>
+      #wordTree {
+        float: left;
+        width: 75%;
+        height: 98vh;
+      }
+      #sideBar {
+        width: 20%;
+        float: left;
+      }
+      #emojiList {
+        list-style: none;
+        width: 100%;
+        padding: 0;
+        height: 90vh;
+        overflow-y: scroll;
+      }
+      .emojiItem {
+        cursor: pointer;
+      }
+      .emojiItem:hover {
+        background: #CCCCCC;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wordTree"></div>
+    <div id="sideBar">
+      <div>Select Start Emoji</div>
+      <ul id="emojiList">
+      </ul>
+    </div>
+    <script type="text/javascript">
+      var data;
+      var options;
+      var dataCopy;
+      var chart;
+      d3.json('review_list.json', function(error, data) {
+        dataCopy = data;
+        drawEmojiList();
+        google.charts.load('current', {packages:['wordtree']});
+        google.charts.setOnLoadCallback(drawChart);
+      });
+      function drawChart() {
+        data = google.visualization.arrayToDataTable(dataCopy);
+
+        options = {
+          wordtree: {
+            format: 'implicit',
+            word: ''
+          }
+        };
+
+        chart = new google.visualization.WordTree(document.getElementById('wordTree'));
+        chart.draw(data, options);
+      }
+      function getEmojiList() {
+        let eDict = {};
+        dataCopy.forEach(item => {
+          let emojis = item[0].split(' ');
+          if (emojis[0] in eDict) {
+            eDict[emojis[0]]++;
+          }
+          else {
+            eDict[emojis[0]] = 1;
+          }
+        });
+        emojiList = Object.entries(eDict);
+        emojiList.sort((a, b) => b[1] - a[1]);
+        return emojiList;
+      }
+      function drawEmojiList() {
+        let emojiList = getEmojiList();
+        d3.select("#emojiList")
+          .selectAll(".emojiItem")
+          .data(emojiList)
+          .enter()
+          .append("li")
+          .attr("class", "emojiItem")
+          .text(d => d[0] + " " + d[1])
+          .on("click", d => changeRoot(d[0]));
+      }
+      function changeRoot(newRoot) {
+        options.wordtree.word = newRoot;
+        chart.draw(data, options);
+      }
+    </script>
+  </body>
+</html>
