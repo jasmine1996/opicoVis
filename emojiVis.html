@@ -1,0 +1,469 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="https://d3js.org/queue.v1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Lato', sans-serif;
+        margin: 0;
+        background: #F0EDF4;
+      }
+      h1 {
+        margin: 0;
+        text-align: center;
+      }
+      h3 {
+        margin-top: 0;
+        margin-bottom: 5px;
+      }
+      #currentEmoji {
+        font-size: 80px;
+      }
+      #emojiSummary {
+        position: relative;
+      }
+      #changeEmojiContainer {
+        position: absolute;
+        top: 80px;
+        left: 110px;
+      }
+      #changeEmojiButton {
+        cursor: pointer;
+        border: 0.1em solid #8b4eb7;
+        border-radius: 5px;
+        color: white;
+        background: #8b4eb7;
+      }
+      #emojiKeyboard {
+        display: none;
+        width: 300px;
+        height: 580px;
+        overflow-y: scroll;
+        overflow-x: hidden;
+        border: 2px solid #8b4eb7;
+        position: absolute;
+        left: 0;
+        transform: translateY(-1px);
+        border-radius: 5px 0px 5px 5px;
+        padding: 0 0px 5px 5px;
+        background: white;
+        z-index: 100;
+      }
+      .emojiKey {
+        text-align: center;
+        float: left;
+        width: 30px;
+        font-size: 20px;
+        padding: 5px;
+        cursor: pointer;
+      }
+      .emojiKey:hover {
+        background: #DDDDDD;
+        transition: background-color 0.25s;
+      }
+      .xaxis text {
+        font-size: 18px;
+      }
+      .show {
+        display: block !important;
+      }
+      #otherEmojisContainer {
+        float: left;
+        width: 70%;
+        padding: 10px;
+        padding-bottom: 0;
+      }
+      #sidebar {
+        float: left;
+        width: 26%;
+        padding: 0 20px 10px 10px;
+        margin-top: 10px;
+        border: 3px solid #8b4eb7;
+        border-radius: 10px;
+        background: white;
+      }
+      .currEmojiGraphs {
+        width: 400px;
+        height: 230px;
+        margin-bottom: 10px;
+      }
+      #placeTypeGraph {
+        width: 200px;
+        height: 200px;
+      }
+      .otherEmojiGraphs {
+        width: 350px;
+        height: 300px;
+        float: left;
+        margin: 0 20px 0 5px;
+        margin-right: 20px;
+        margin-bottom: 10px;
+        padding: 10px;
+        background: white;
+        border-radius: 10px;
+      }
+      #pairPlaceTypeGraph {
+        height: 270px;
+      }
+      #reactionList {
+        width: 100%;
+        height: 270px;
+        overflow-y: scroll;
+      }
+      .reactionPlaceType {
+        float: right;
+        text-align: right;
+        font-size: 12px;
+        margin-top: 14px;
+        margin-right: 10px;
+      }
+      .emojiReaction {
+        padding: 5px 0 5px 5px;
+        font-size: 20px;
+        letter-spacing: 2px;
+      }
+      .emojiReaction:nth-child(odd) {
+        background: #eee6f5;
+      }
+
+    </style>
+  </head>
+  <body>
+    <h1>Emoji Association with other Emojis and Place Types</h1>
+    <div id="otherEmojisContainer">
+      <div style="margin: 0 5px 10px 5px; border-radius: 10px; background: white; padding: 10px;">
+        <h3>Percentages of Reactions Paired with Other Emojis</h3>
+        <svg id="otherEmojisGraph"></svg>
+      </div>
+      <div id="emojiPairContainer">
+        <div class="otherEmojiGraphs" style="width: 600px; height: 300px;">
+          <h3>Place Type Breakdown <span class="currentPair"></span></h3>
+          <canvas id="pairPlaceTypeGraph" width="600" height="270"></canvas>
+        </div>
+        <div class="otherEmojiGraphs" style="margin-right: 0; width: 388px;">
+          <h3>Reaction Details <span class="currentPair"></span></h3>
+          <div id="reactionList"></div>
+        </div>
+      </div>
+    </div>
+    <div id="sidebar">
+      <div id="emojiSummary" style="margin-bottom: 10px;">
+        <div id="currentEmoji"></div>
+        <div id="changeEmojiContainer">
+          <button id="changeEmojiButton" onclick="toggleKeyboard()">Change Emoji</button>
+          <div id="emojiKeyboard"></div>
+        </div>
+        <div id="summaryStrings">
+          <div>Appeared in <span id="reactionCount"></span> reactions</div>
+          <div>for a total of <span id="totalCount"></span> times</div>
+          <div>at <span id="placeCount"></span> types of places</div>
+        </div>
+      </div>
+      <div class="currEmojiGraphs">
+        <h3>Percentages of Reactions with Multiple Uses</h3>
+        <canvas id="repeatsGraph" width="400" height="200"></canvas>
+      </div>
+      <div class="currEmojiGraphs">
+        <h3>Place Type Breakdown</h3>
+        <canvas id="placeTypeGraph" width="400" height="200"></canvas>
+      </div>
+    </div>
+    <script>
+      var reactionData;
+      var emojiData;
+      var categoryDict;
+      var currEmoji;
+      var currOtherEmoji;
+      var currEmojiStats;
+      var otherEmojiStats;
+      var repeatsChart;
+      var placeTypeChart;
+      var usersChart;
+      var pairPlaceTypeChart;
+      var pairUsersChart;
+      var placeColors = {};
+
+      var margin = {top: 5, right: 30, bottom: 30, left: 25},
+          width = window.innerWidth*0.68 - margin.left - margin.right,
+          height = 290 - margin.top - margin.bottom;
+      var x = d3.scaleBand()
+        .range([0, width])
+        .padding(0.05);
+      var y = d3.scaleLinear()
+        .range([height, 0]);
+      var otherEmojisChart = d3.select("#otherEmojisGraph")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      queue()
+      .defer(d3.json, "reviews_with_timestamps.json")
+      .defer(d3.json, "categories.json")
+      .await(ready);
+      
+      function ready(error, data1, data2) {
+        reactionData = data1.reviewList;
+        emojiData = data1.emojiList;
+        categoryDict = data2;
+        /*d3.select("#categoryDropdown")
+          .selectAll(".category")
+          .data(Object.keys(categories))
+          .enter()
+          .append("option")
+          .attr("class", "category")
+          .attr("value", (d) => d)
+          .text((d) => d)
+          .on("select", (d) => setCategory(d));*/
+        setPlaceColors();
+        processNewEmoji("\ud83d\udc4d");
+        showGraphs();
+        createKeyboard();
+      }
+      function setPlaceColors() {
+        Object.values(reactionData).forEach(item => {
+          if (!(item.placeType in placeColors)) {
+            placeColors[item.placeType] = true;
+          }
+        });
+        let allTypes = Object.keys(placeColors);
+        allTypes.sort();
+        allTypes.forEach((item, index) => {
+          placeColors[item] = d3.interpolateRainbow(index / allTypes.length);
+        });
+      }
+      function createKeyboard() {
+        d3.select("#emojiKeyboard")
+          .selectAll("div")
+          .data(Object.keys(emojiData).slice(0, 300))
+          .enter()
+          .append("div")
+          .attr("class", "emojiKey")
+          .text(d => d)
+          .on("click", d => changeEmoji(d));
+      }
+      function toggleKeyboard() {
+        document.getElementById("emojiKeyboard").classList.toggle("show");
+      }
+      function changeEmoji(emj) {
+        processNewEmoji(emj);
+        showGraphs();
+        toggleKeyboard();
+      }
+      // compute list of emojis that appear with currEmoji and their counts
+      function processNewEmoji(emj) {
+        if (emj === currEmoji) return;
+        currEmoji = emj;
+        let currEmojiInfo = {
+          count: emojiData[currEmoji].count,
+          totalCount: 0,
+          users: {},
+          places: {},
+        };
+        let otherEmojis = {};
+        let repeatedTimes = {};
+        let currReactionIds = emojiData[currEmoji].reviewIds;
+        currReactionIds.forEach(reactionId => {
+          //let user = reactionData[reactionId].user;
+          let placeType = reactionData[reactionId].placeType;
+          //user in currEmojiInfo.users? currEmojiInfo.users[user]++ : currEmojiInfo.users[user] = 1;
+          placeType in currEmojiInfo.places? currEmojiInfo.places[placeType]++ : currEmojiInfo.places[placeType] = 1;
+
+          let repeatCount = 0;
+          let seenEmojis = [];
+          reactionData[reactionId].emojis.forEach(emoji => {
+            if (emoji === currEmoji) {  // keep track of number of times the current emoji appears
+              repeatCount++;
+              currEmojiInfo.totalCount++;
+            }
+            else if (emoji in otherEmojis) {
+              if (!seenEmojis.includes(emoji)) {  // don't double count reactions when same other emoji repeats
+                otherEmojis[emoji].count++;
+                //user in otherEmojis[emoji].users? otherEmojis[emoji].users[user]++ : otherEmojis[emoji].users[user] = 1;
+                placeType in otherEmojis[emoji].places? otherEmojis[emoji].places[placeType]++ : otherEmojis[emoji].places[placeType] = 1;
+                seenEmojis.push(emoji);
+              }
+            }
+            else {
+              otherEmojis[emoji] = {
+                count: 1,
+                users: {},
+                places: {}
+              };
+              //otherEmojis[emoji].users[user] = 1;
+              otherEmojis[emoji].places[placeType] = 1;
+            }
+          });
+          if (repeatCount > 1)
+            repeatCount in repeatedTimes? repeatedTimes[repeatCount]++ : repeatedTimes[repeatCount] = 1;
+        });
+        currEmojiInfo.repeatedTimes = repeatedTimes;
+        currEmojiStats = currEmojiInfo;
+        otherEmojiStats = otherEmojis;
+      }
+      function showGraphs() {
+        d3.select("#currentEmoji").text(currEmoji);
+        // show counts
+        d3.select("#reactionCount").text(currEmojiStats.count);
+        d3.select("#totalCount").text(currEmojiStats.totalCount);
+        d3.select("#placeCount").text(Object.keys(currEmojiStats.places).length);
+        //d3.select("#userCount").text(Object.keys(currEmojiStats.users).length);
+        createCurrEmojiGraphs();
+        createOtherEmojisGraphs();
+      }
+      function createCurrEmojiGraphs() {
+        let sortedPlaces = Object.entries(currEmojiStats.places);
+        sortedPlaces.sort((a, b) => b[1] - a[1]);
+        if (!repeatsChart) {  // create charts
+          repeatsChart = new Chart(document.getElementById("repeatsGraph"), {
+            type: 'bar',
+            data: {
+              labels: Object.keys(currEmojiStats.repeatedTimes),
+              datasets: [{
+                label: 'frequency',
+                data: Object.values(currEmojiStats.repeatedTimes).map(item => Math.round((item / currEmojiStats.count) * 100)),
+                backgroundColor: generateBarColors(Object.keys(currEmojiStats.repeatedTimes), 200),
+                borderWidth: 1
+              }]
+            },
+            options: {
+              scales: {
+                yAxes: [{
+                  ticks: {
+                    beginAtZero: true
+                  }
+                }]
+              },
+              legend: {
+                display: false
+              }
+            }
+          });
+          placeTypeChart = new Chart(document.getElementById("placeTypeGraph"), {
+            type: 'doughnut',
+            data: {
+              labels: sortedPlaces.map(item => item[0].split("_").join(" ")),
+              datasets: [{
+                label: 'percentage',
+                data: sortedPlaces.map(item => item[1]),
+                backgroundColor: generatePieColors(sortedPlaces.map(item => item[0])),
+                borderWidth: 1
+              }]
+            },
+            options: {
+              legend: {
+                display: false
+              }
+            }
+          });
+        }
+        else {  // update charts
+          repeatsChart.data.labels = Object.keys(currEmojiStats.repeatedTimes);
+          repeatsChart.data.datasets[0].data = Object.values(currEmojiStats.repeatedTimes).map(item => Math.round((item / currEmojiStats.count) * 100));
+          repeatsChart.data.datasets[0].backgroundColor = generateBarColors(Object.keys(currEmojiStats.repeatedTimes), 200);
+          repeatsChart.update();
+          placeTypeChart.data.labels = sortedPlaces.map(item => item[0].split("_").join(" "));
+          placeTypeChart.data.datasets[0].data = sortedPlaces.map(item => item[1]);
+          placeTypeChart.data.datasets[0].backgroundColor = generatePieColors(sortedPlaces.map(item => item[0]));
+          placeTypeChart.update();
+        }
+      }
+      function generateBarColors(dataArray, hue) {
+        //let jump = 100 / (dataArray.length);
+        //return dataArray.map((item, index) => `hsl(${hue}, ${jump * index}%, 60%)`)
+        return dataArray.map(item => "#8b4eb7")
+      }
+      function generatePieColors(dataArray) {
+        return dataArray.map(item => placeColors[item]);
+      }
+
+      function createOtherEmojisGraphs() {
+        d3.select("#otherEmojisGraph").select("g").selectAll("*").remove();
+        let sortedOtherEmojis = Object.entries(otherEmojiStats).slice(0, 20);
+        sortedOtherEmojis.sort((a, b) => b[1].count - a[1].count);
+        x.domain(sortedOtherEmojis.map(item => item[0]));
+        y.domain([0, d3.max(sortedOtherEmojis, function(d) { return Math.round(d[1].count / currEmojiStats.count * 100); })]);
+        otherEmojisChart.append("g")
+          .attr("class", "xaxis")
+          .attr("transform", "translate(0," + height + ")")
+          .call(d3.axisBottom(x));
+        otherEmojisChart.append("g")
+          .call(d3.axisLeft(y));
+
+        otherEmojisChart.selectAll(".bar")
+          .data(sortedOtherEmojis)
+          .enter()
+          .append("rect")
+          .attr("class", "bar")
+          .attr("x", function(d) { return x(d[0]); })
+          .attr("width", x.bandwidth())
+          .attr("y", function(d) { return y(Math.round(d[1].count / currEmojiStats.count * 100)); })
+          .attr("height", function(d) { return height - y(Math.round(d[1].count / currEmojiStats.count * 100)); })
+          .attr("fill", "#8b4eb7")
+          .on("click", d => showGraphsForEmojiPair(d[0]));
+        showGraphsForEmojiPair(sortedOtherEmojis[0][0]);
+      }
+      function showGraphsForEmojiPair(otherEmoji) {
+        currOtherEmoji = otherEmoji;
+        d3.selectAll(".currentPair")
+          .text("for " + currEmoji + " + " + currOtherEmoji);
+        let sortedPlaces = Object.entries(otherEmojiStats[currOtherEmoji].places);
+        sortedPlaces.sort((a, b) => b[1] - a[1]);
+        if (!pairPlaceTypeChart) {
+          pairPlaceTypeChart = new Chart(document.getElementById("pairPlaceTypeGraph"), {
+            type: 'doughnut',
+            data: {
+              labels: sortedPlaces.map(item => item[0].split("_").join(" ")),
+              datasets: [{
+                label: 'frequency',
+                data: sortedPlaces.map(item => item[1]),
+                backgroundColor: generatePieColors(sortedPlaces.map(item => item[0])),
+                borderWidth: 1
+              }]
+            },
+            options: {
+              legend: {
+              }
+            }
+          });
+        }
+        else {
+          pairPlaceTypeChart.data.labels = sortedPlaces.map(item => item[0].split("_").join(" "));
+          pairPlaceTypeChart.data.datasets[0].data = sortedPlaces.map(item => item[1]);
+          pairPlaceTypeChart.data.datasets[0].backgroundColor = generatePieColors(sortedPlaces.map(item => item[0]));
+          pairPlaceTypeChart.update();
+        }
+        showPairReactions();
+      }
+      function showPairReactions() {
+        let commonIds = [];
+        let currReactionIds = emojiData[currEmoji].reviewIds;
+        let otherReactionIds = emojiData[currOtherEmoji].reviewIds;
+        for (let i = 0; i < currReactionIds.length; i++) {
+          for (let j = 0; j < otherReactionIds.length; j++) {
+            if (currReactionIds[i] === otherReactionIds[j]) {
+              if (!commonIds.includes(currReactionIds[i]))
+              commonIds.push(currReactionIds[i])
+            }
+          }
+        }
+        let commonReviews = commonIds.map(item => reactionData[item]);
+        d3.select("#reactionList").selectAll("*").remove();
+        d3.select("#reactionList")
+          .selectAll("div")
+          .data(commonReviews)
+          .enter()
+          .append("div")
+          .attr("class", "emojiReaction")
+          .text(d => d.emojis.join(" "))
+          .append("div")
+          .attr("class", "reactionPlaceType")
+          .text(d => d.placeType.split("_").join(" "));
+      }
+    </script>
+  </body>
+</html>
