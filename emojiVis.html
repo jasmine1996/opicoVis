@@ -13,7 +13,8 @@
         background: #F0EDF4;
       }
       h1 {
-        margin: 0;
+        margin: 20px 0;
+        font-size: 36px;
         text-align: center;
       }
       h3 {
@@ -25,6 +26,10 @@
       }
       #emojiSummary {
         position: relative;
+        margin-bottom: 20px;
+      }
+      #summaryStrings {
+        font-size: 20px;
       }
       #changeEmojiContainer {
         position: absolute;
@@ -80,7 +85,7 @@
       #sidebar {
         float: left;
         width: 26%;
-        padding: 0 20px 10px 10px;
+        padding: 10px 20px 30px 10px;
         margin-top: 10px;
         border: 3px solid #8b4eb7;
         border-radius: 10px;
@@ -135,16 +140,16 @@
   <body>
     <h1>Emoji Association with other Emojis and Place Types</h1>
     <div id="otherEmojisContainer">
-      <div style="margin: 0 5px 10px 5px; border-radius: 10px; background: white; padding: 10px;">
+      <div style="margin: 0 5px 10px 5px; border-radius: 10px; background: white; padding: 20px 10px;">
         <h3>Percentages of Reactions Paired with Other Emojis</h3>
         <svg id="otherEmojisGraph"></svg>
       </div>
       <div id="emojiPairContainer">
-        <div class="otherEmojiGraphs" style="width: 600px; height: 300px;">
+        <div class="otherEmojiGraphs" style="width: 600px; height: 300px; padding: 22px 10px;">
           <h3>Place Type Breakdown <span class="currentPair"></span></h3>
           <canvas id="pairPlaceTypeGraph" width="600" height="270"></canvas>
         </div>
-        <div class="otherEmojiGraphs" style="margin-right: 0; width: 388px;">
+        <div class="otherEmojiGraphs" style="margin-right: 0; width: 388px; padding: 22px 10px;">
           <h3>Reaction Details <span class="currentPair"></span></h3>
           <div id="reactionList"></div>
         </div>
@@ -220,7 +225,7 @@
           .text((d) => d)
           .on("select", (d) => setCategory(d));*/
         setPlaceColors();
-        processNewEmoji("\ud83d\udc4d");
+        processNewEmoji("❌");
         showGraphs();
         createKeyboard();
       }
