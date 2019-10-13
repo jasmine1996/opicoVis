@@ -15,6 +15,26 @@
       margin: 0;
       background: #F0EDF4;
     }
+    .headerBar {
+      position: relative;
+      z-index: 10;
+      -webkit-box-shadow: 0 0 0 1px rgba(16,22,26,.1), 0 0 0 rgba(16,22,26,0), 0 1px 1px rgba(16,22,26,.2);
+      box-shadow: 0 0 0 1px rgba(16,22,26,.1), 0 0 0 rgba(16,22,26,0), 0 1px 1px rgba(16,22,26,.2);
+      background-color: #fff;
+      height: 50px;
+      padding: 0 15px;
+    }
+    #siteTitle {
+      line-height: 50px;
+    }
+    #siteTitle a {
+      font-weight: bold;
+      text-decoration: none;
+      font-size: 1.3em;
+      letter-spacing: 2px;
+      color: black !important;
+      margin-top: 5px;
+    }
     h2 {
       font-size: 32px;
       margin: 10px auto;
@@ -101,6 +121,13 @@
   </style>
 </head>
 <body>
+  <div class="headerBar">
+    <div style="margin: 0px auto; max-width: 960px;">
+      <div id="siteTitle">
+          <a href="https://www.opico.io/">opico</a>
+      </div>
+    </div>
+  </div>
   <h2>Monthly Top Emojis in Opico (Aug. 2017 - Feb. 2019)</h2>
   <div id="streamGraph"></div>
   <div id="sideBar">
